@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Questions Try Out</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1100px; margin: 0 auto; padding: 20px; background: #f5f7fa; }
+        .header { text-align: center; margin-bottom: 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 20px; border-radius: 10px; position: relative; }
+        .header a { color: #fff; text-decoration: underline; }
+        .section { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 16px; overflow: hidden; }
+        .section-header { padding: 16px 20px; background: #f8f9fa; border-bottom: 1px solid #e1e5e9; display: flex; justify-content: space-between; align-items: center; }
+        .agent { font-weight: 600; color: #4f46e5; }
+        .agent-desc { color: #374151; }
+        .q-list { list-style: none; margin: 0; padding: 12px 20px; }
+        .q-item { background: #ffffff; border: 1px solid #eef2f7; padding: 12px 14px; border-radius: 8px; margin: 10px 0; color: #111827; }
+        .nav { display:flex; gap:10px; justify-content:center; margin-top:10px; }
+        .btn { padding: 10px 16px; background:#667eea; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+        .btn.secondary { background:#6b7280; }
+        .note { text-align:center; color:#e5e7eb; margin: 8px 0 18px; }
+        .dev-phase { 
+            margin: 10px auto 0; 
+            display: inline-block; 
+            font-size: 13px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.6px; 
+            color: #1f2937; 
+            background: linear-gradient(90deg, #fde047 0%, #f59e0b 100%); 
+            padding: 6px 12px; 
+            border-radius: 9999px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .version-badge { position: absolute; top: 10px; right: 12px; background: rgba(17,24,39,0.9); color: #fff; padding: 6px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="version-badge">Rishikhet1.0 version</span>
+        <h1>Questions Try Out</h1>
+        <div class="dev-phase">Currently in development phase</div>
+        <p class="note">These sample questions are organized by agent domains. Click Home to return to chat.</p>
+        <div class="nav">
+            <button class="btn" onclick="location.href='/'">Home</button>
+            <button class="btn secondary" onclick="location.href='/profile-page'">Manage Profile</button>
+        </div>
+    </div>
+
+    <!-- Agent 1: Crop production and Farming Practices (from Group 2) -->
+    <div class="section">
+        <div class="section-header">
+            <div class="agent">Agent 1</div>
+            <div class="agent-desc">Crop Production and Farming Practices</div>
+        </div>
+        <ul class="q-list">
+            <li class="q-item">Whiteflies are attacking my cotton crop. How can I make a bio-pesticide at home to control them?</li>
+            <li class="q-item">My paddy crop has brown spots on the leaves. What disease is this and what medicine should I spray?</li>
+            <li class="q-item">I have prepared my field for planting soybeans. What should I do next before sowing the seeds?</li>
+        </ul>
+    </div>
+
+    <!-- Agent 2: Resource, Management, Technology (from Group 4) -->
+    <div class="section">
+        <div class="section-header">
+            <div class="agent">Agent 2</div>
+            <div class="agent-desc">Resource, Management, Technology</div>
+        </div>
+        <ul class="q-list">
+            <li class="q-item">How can I control the haryaali weed (Weed Management) in my fields before planting?</li>
+            <li class="q-item">I want to start beekeeping. What is the first thing I need to do?</li>
+        </ul>
+    </div>
+
+    <!-- Agent 3: Business, Management (from Group 3) -->
+    <div class="section">
+        <div class="section-header">
+            <div class="agent">Agent 3</div>
+            <div class="agent-desc">Business, Management</div>
+        </div>
+        <ul class="q-list">
+            <li class="q-item">How do I apply for a Kisan Credit Card to get a loan for my farm?</li>
+            <li class="q-item">Is there any government scheme to get a subsidy for building a small cold storage unit?</li>
+            <li class="q-item">How can I preserve my mango harvest for a few weeks before selling?</li>
+        </ul>
+    </div>
+
+    <!-- Agent 4: Animal Husbandry (from Group 1) -->
+    <div class="section">
+        <div class="section-header">
+            <div class="agent">Agent 4</div>
+            <div class="agent-desc">Animal Husbandry</div>
+        </div>
+        <ul class="q-list">
+            <li class="q-item">I want to build a new shed for my cattle. What is the best way to build it to keep the animals healthy?</li>
+            <li class="q-item">How can I tell if my buffalo is ready for Artificial Insemination?</li>
+        </ul>
+    </div>
+</body>
+</html>

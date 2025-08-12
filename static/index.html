@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multi-Agent Agricultural AI Chat</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            position: relative;
+        }
+        
+        .input-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        #question {
+            width: 80%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+        
+        button:hover {
+            background: #5a6fd8;
+        }
+        
+        .tab-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .tab-buttons {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e1e5e9;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            margin: 0;
+        }
+        
+        .tab-button.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .tab-button:hover:not(.active) {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .tab-content {
+            padding: 20px;
+            min-height: 200px;
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .answer-content {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+        }
+        
+        .sources-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .sources-list li {
+            background: #f8f9fa;
+            margin: 8px 0;
+            padding: 12px;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        
+        .cot-content {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            border-left: 4px solid #28a745;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        
+        .success-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .failure {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Talking Character styles */
+        .character-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 12px; }
+        .speech-bubble { position: relative; background: #ecfeff; border-radius: 16px; padding: 12px 14px; min-height: 60px; min-width: 160px; max-width: 520px; text-align: center; color: #1f2937; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: none; }
+        .speech-tail { position: absolute; bottom: -10px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 10px solid #ecfeff; }
+        .panel { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 12px; width: 100%; max-width: 520px; }
+        .panel .row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .panel label { font-size: 12px; color: #4b5563; }
+        .panel select, .panel input[type="range"] { flex: 1; padding: 8px; font-size: 13px; border: 1px solid #e5e7eb; border-radius: 6px; }
+        .lang-info { font-size: 12px; color: #4b5563; background: #f9fafb; padding: 8px; border-radius: 6px; }
+        .character-stage { position: relative; width: 18rem; height: 18rem; background: #fff; border-radius: 9999px; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .character-face { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; z-index: 10; pointer-events: none; }
+        .character-mouth-slot { position: absolute; z-index: 20; pointer-events: none; left: 145px; top: 117px; width: 55px; height: 28px; transform: translate(-50%, -50%); }
+        .character-mouth { width: 100%; height: 100%; object-fit: contain; background: transparent; transition: transform 100ms linear; }
+
+        /* Widen voice selection box to accommodate long names */
+        #tc-voice { min-width: 320px; }
+
+        /* Version badge and development note */
+        .version-badge { position: absolute; top: 10px; right: 12px; background: rgba(17,24,39,0.9); color: #fff; padding: 6px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .dev-phase { 
+            margin: 10px auto 0; 
+            display: inline-block; 
+            font-size: 13px; 
+            font-weight: 700; 
+            text-transform: uppercase; 
+            letter-spacing: 0.6px; 
+            color: #1f2937; 
+            background: linear-gradient(90deg, #fde047 0%, #f59e0b 100%); 
+            padding: 6px 12px; 
+            border-radius: 9999px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="version-badge">Rishikhet1.0 version</span>
+        <h1>Agricultural AI Assistant</h1>
+        <p>Ask questions about farming, crops, weather, and agricultural practices</p>
+        <div class="dev-phase"><em>Currently in development phase</em></div>
+        <div id="profile-status" style="margin-top: 10px; font-size: 14px;">
+            <span id="profile-indicator">No profile selected</span>
+            <button onclick="window.location.href='/profile-page'" style="margin-left: 10px; padding: 5px 10px; font-size: 12px;">Manage Profile</button>
+            <button onclick="window.location.href='/questions'" style="margin-left: 10px; padding: 5px 10px; font-size: 12px;">Questions Try Out</button>
+        </div>
+    </div>
+
+    <!-- Talking Character UI -->
+    <div id="talking-character" class="character-wrap">
+        <!-- Speech Bubble -->
+        <div class="speech-bubble">
+            <div id="tc-speech-text">Say hello! Ask a question above and I will speak the answer.</div>
+            <div id="tc-speaking-ind" style="margin-top:6px; font-size:12px; color:#2563eb; display:none;">🔊 Speaking...</div>
+            <div class="speech-tail"></div>
+        </div>
+
+        <!-- Voice Selection Panel -->
+        <div class="panel">
+            <div class="row">
+                <label for="tc-voice">🎤 Voice:</label>
+                <select id="tc-voice"></select>
+                <button id="tc-stop" title="Stop Speaking" style="padding:8px 10px; font-size:12px;">Stop</button>
+            </div>
+            <div class="row">
+                <label for="tc-speed" style="min-width:90px;">Speed: <span id="tc-speed-val">0.7x</span></label>
+                <input id="tc-speed" type="range" min="0.3" max="2.0" step="0.1" value="0.7" />
+            </div>
+            <div id="tc-lang-info" class="lang-info" style="display:none;"></div>
+        </div>
+
+        <!-- Character Stage -->
+        <div class="character-stage">
+            <img class="character-face" src="/character/Picture10.png" alt="Character Face" />
+            <div class="character-mouth-slot">
+                <img id="tc-mouth" class="character-mouth" src="/character/aori.png" alt="Character Mouth" />
+            </div>
+        </div>
+    </div>
+    </div>
+    
+    <div class="input-section">
+        <input type="text" id="question" placeholder="Enter your agricultural question here..." />
+        <button onclick="askQuestion()">Ask Question</button>
+    </div>
+
+    <!-- Image Analysis (Plant/Soil) -->
+    <div class="input-section" style="margin-top: 12px;">
+        <div style="font-weight:600; margin-bottom:8px;">🔎 Plant/Soil Image Analysis</div>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <input type="file" id="vision-file" accept="image/*" />
+            <label for="vision-mode">Mode:</label>
+            <select id="vision-mode">
+                <option value="plant">Plant / Leaf</option>
+                <option value="soil">Soil</option>
+            </select>
+            <button id="vision-analyze">Analyze Image</button>
+            <span id="vision-status" style="font-size:12px; color:#666;"></span>
+        </div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:16px;">
+            <img id="vision-preview" alt="Preview" style="max-height:140px; display:none; border-radius:6px; border:1px solid #e5e7eb;" />
+            <div id="vision-help" style="font-size:12px; color:#4b5563;">Upload a clear photo of a plant/leaf (spots, discoloration) or soil sample (close-up).</div>
+        </div>
+    </div>
+
+    <div id="results-container" class="tab-container">
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="showTab('answer')">
+                📝 Answer
+            </button>
+            <button class="tab-button" onclick="showTab('sources')">
+                📚 Sources
+            </button>
+            <button class="tab-button" onclick="showTab('cot')">
+                🧠 Chain of Thought
+            </button>
+        </div>
+        
+        <div id="answer-tab" class="tab-content active">
+            <div id="answer-content" class="answer-content"></div>
+        </div>
+        
+        <div id="sources-tab" class="tab-content">
+            <ul id="sources-list" class="sources-list"></ul>
+        </div>
+        
+        <div id="cot-tab" class="tab-content">
+            <div id="cot-content" class="cot-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching functionality
+        function showTab(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => button.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to clicked button
+            event.target.classList.add('active');
+        }
+
+        // --- Talking Character State ---
+        const TC = {
+            isThinking: false,
+            isTalking: false,
+            speechText: '',
+            voices: [],
+            selectedVoice: localStorage.getItem('selected_voice') || '',
+            speechSpeed: parseFloat(localStorage.getItem('speech_speed') || '0.7'),
+            mouthImages: [
+                '/character/aori.png','/character/cdgk.png','/character/e.png','/character/fv.png','/character/ln.png','/character/rest.png','/character/restneutral.png','/character/th.png'
+            ],
+            animTimer: null,
+        };
+
+        const tcEls = {
+            speechText: document.getElementById('tc-speech-text'),
+            speakingInd: document.getElementById('tc-speaking-ind'),
+            mouth: document.getElementById('tc-mouth'),
+            voiceSel: document.getElementById('tc-voice'),
+            speed: document.getElementById('tc-speed'),
+            speedVal: document.getElementById('tc-speed-val'),
+            langInfo: document.getElementById('tc-lang-info'),
+            stopBtn: document.getElementById('tc-stop'),
+        };
+
+        // Initialize controls with persisted values
+        tcEls.speed.value = TC.speechSpeed;
+        tcEls.speedVal.textContent = `${TC.speechSpeed.toFixed(1)}x`;
+
+        function tcSetMouth(src) { tcEls.mouth.src = src; }
+        function tcStartAnim() {
+            if (TC.animTimer) clearInterval(TC.animTimer);
+            let idx = 0;
+            TC.animTimer = setInterval(() => {
+                tcSetMouth(TC.mouthImages[idx % TC.mouthImages.length]);
+                idx++;
+            }, 300);
+        }
+        function tcStopAnim() {
+            if (TC.animTimer) { clearInterval(TC.animTimer); TC.animTimer = null; }
+            tcSetMouth(TC.mouthImages[0]);
+        }
+
+        // Web Speech: load voices
+        function tcLoadVoices() {
+            TC.voices = window.speechSynthesis.getVoices();
+            // Populate dropdown
+            tcEls.voiceSel.innerHTML = '';
+            const defOpt = document.createElement('option');
+            defOpt.value = '';
+            defOpt.textContent = 'Default Voice';
+            tcEls.voiceSel.appendChild(defOpt);
+            TC.voices.forEach(v => {
+                const o = document.createElement('option');
+                o.value = v.name; o.textContent = `${v.name} (${v.lang})${(v.lang||'').toLowerCase().includes('hi') ? ' 🇮🇳' : ''}`;
+                tcEls.voiceSel.appendChild(o);
+            });
+            tcEls.voiceSel.value = TC.selectedVoice;
+            tcUpdateLangInfo();
+        }
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = tcLoadVoices;
+            // Some browsers need explicit call
+            setTimeout(tcLoadVoices, 0);
+        }
+
+        function tcUpdateLangInfo() {
+            const v = TC.voices.find(x => x.name === TC.selectedVoice);
+            if (!v) { tcEls.langInfo.style.display = 'none'; return; }
+            tcEls.langInfo.style.display = 'block';
+            tcEls.langInfo.innerHTML = `<span style="font-weight:600;">Current Voice:</span> ${v.name}<br/><span style="font-weight:600;">Language:</span> ${v.lang}${(v.lang||'').toLowerCase().includes('hi') ? ' <span style="color:#16a34a;font-weight:600;">✓ Hindi Supported</span>' : ''}`;
+        }
+
+        tcEls.voiceSel.addEventListener('change', (e) => {
+            TC.selectedVoice = e.target.value;
+            localStorage.setItem('selected_voice', TC.selectedVoice);
+            tcUpdateLangInfo();
+        });
+        tcEls.speed.addEventListener('input', (e) => {
+            TC.speechSpeed = parseFloat(e.target.value);
+            tcEls.speedVal.textContent = `${TC.speechSpeed.toFixed(1)}x`;
+            localStorage.setItem('speech_speed', String(TC.speechSpeed));
+        });
+        tcEls.stopBtn.addEventListener('click', () => tcStopSpeaking());
+
+        function tcSetThinking(thinking) {
+            TC.isThinking = thinking;
+            if (thinking) {
+                tcEls.speakingInd.style.display = 'none';
+                tcEls.speechText.innerHTML = '<span style="color:#6b7280;font-style:italic;">Thinking...</span>';
+                tcStopSpeaking();
+            }
+        }
+
+        // Sanitize text for speech: remove punctuation, symbols, markdown underlines, and URLs
+        function tcSanitizeForSpeech(text) {
+            if (!text) return text;
+            let t = String(text);
+            // Remove standalone markdown underline lines (===, ---, ___, *** ...)
+            t = t.replace(/^[\s]*[-=*_`~]{3,}[\s]*$/gm, ' ');
+            // Remove markdown formatting symbols and common bullets
+            t = t.replace(/[#*_`>~\-•·]/g, ' ');
+            // Remove URLs
+            t = t.replace(/https?:\/\/\S+/g, ' ');
+            // Remove all punctuation and symbol characters (Unicode-aware). This strips '=' too.
+            try {
+                t = t.replace(/[\p{P}\p{S}]/gu, ' ');
+            } catch (e) {
+                // Fallback for browsers without Unicode property escapes
+                t = t.replace(/[\.,!?;:()\[\]{}\"'`~_\/\\|\-+=<>@#$%^&*]/g, ' ');
+            }
+            // Collapse multiple spaces
+            t = t.replace(/\s+/g, ' ').trim();
+            return t;
+        }
+
+        function tcSpeakText(text) {
+            if (!('speechSynthesis' in window)) { return; }
+            tcStopSpeaking();
+            const speakText = tcSanitizeForSpeech(text) || text || '';
+            const u = new SpeechSynthesisUtterance(speakText);
+            if (TC.selectedVoice) {
+                const v = TC.voices.find(x => x.name === TC.selectedVoice);
+                if (v) u.voice = v;
+            }
+            u.rate = Math.max(0.3, Math.min(2.0, TC.speechSpeed || 0.7));
+            u.onstart = () => { TC.isTalking = true; tcEls.speakingInd.style.display = 'block'; tcStartAnim(); };
+            u.onend = () => { TC.isTalking = false; tcEls.speakingInd.style.display = 'none'; tcStopAnim(); };
+            u.onerror = () => { TC.isTalking = false; tcEls.speakingInd.style.display = 'none'; tcStopAnim(); };
+            window.speechSynthesis.speak(u);
+        }
+
+        function tcStopSpeaking() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            TC.isTalking = false; tcEls.speakingInd.style.display = 'none'; tcStopAnim();
+        }
+
+        // --- Vision Analysis UI ---
+        const vision = {
+            fileInput: document.getElementById('vision-file'),
+            modeSel: document.getElementById('vision-mode'),
+            analyzeBtn: document.getElementById('vision-analyze'),
+            preview: document.getElementById('vision-preview'),
+            status: document.getElementById('vision-status'),
+        };
+
+        vision.fileInput.addEventListener('change', (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (!f) { vision.preview.style.display = 'none'; return; }
+            const url = URL.createObjectURL(f);
+            vision.preview.src = url;
+            vision.preview.style.display = 'block';
+        });
+
+        vision.analyzeBtn.addEventListener('click', async () => {
+            const f = vision.fileInput.files && vision.fileInput.files[0];
+            if (!f) { alert('Please choose an image first.'); return; }
+            const mode = vision.modeSel.value || 'plant';
+            vision.status.textContent = 'Analyzing image...';
+            tcSetThinking(true);
+            try {
+                const fd = new FormData();
+                fd.append('file', f);
+                fd.append('mode', mode);
+                const resp = await fetch('/analyze-image', { method: 'POST', body: fd });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+
+                // Show results in Answer tab as well
+                const answerContent = document.getElementById('answer-content');
+                const resultsContainer = document.getElementById('results-container');
+                const statusIndicator = data.success ?
+                    '<span class="success-indicator success">✓ Success</span>' :
+                    '<span class="success-indicator failure">✗ Failed</span>';
+                answerContent.innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Agent Used:</strong> ${data.agent_used || 'vision_analysis_agent'}
+                        ${statusIndicator}
+                    </div>
+                    <div class="answer-content">${(data.answer || '').replace(/</g,'&lt;')}</div>
+                `;
+                // Ensure the results container is visible
+                if (resultsContainer && resultsContainer.style.display === 'none') {
+                    resultsContainer.style.display = 'block';
+                }
+                showTabByName('answer');
+
+                // Talking character speak
+                tcSetThinking(false);
+                if (data.answer) tcSpeakText(data.answer);
+
+                // Status
+                vision.status.textContent = data.success ? 'Done.' : 'Failed.';
+            } catch (err) {
+                console.error('Vision analyze error:', err);
+                vision.status.textContent = 'Error analyzing image';
+                tcSetThinking(false);
+                tcStopSpeaking();
+                document.getElementById('answer-content').innerHTML = `
+                    <div class="error">
+                        <strong>Error:</strong> ${err.message || err}
+                    </div>
+                `;
+                // Ensure the results container is visible even on error
+                const resultsContainerErr = document.getElementById('results-container');
+                if (resultsContainerErr && resultsContainerErr.style.display === 'none') {
+                    resultsContainerErr.style.display = 'block';
+                }
+                showTabByName('answer');
+            }
+        });
+
+        // Enhanced question asking with tabbed interface
+        async function askQuestion() {
+            const question = document.getElementById('question').value.trim();
+            if (!question) {
+                alert('Please enter a question');
+                return;
+            }
+
+            // Show results container and loading state
+            const resultsContainer = document.getElementById('results-container');
+            resultsContainer.style.display = 'block';
+            
+            // Show loading in answer tab
+            document.getElementById('answer-content').innerHTML = `
+                <div class="loading">
+                    <div>Processing...</div>
+                    <div style="margin-top: 10px; font-size: 14px; color: #888;">
+                        Processing your agricultural question...
+                    </div>
+                </div>
+            `;
+            
+            // Clear other tabs
+            document.getElementById('sources-list').innerHTML = '';
+            document.getElementById('cot-content').textContent = '';
+            
+            // Make sure we're on the answer tab
+            showTabByName('answer');
+
+            try {
+                console.log('Sending request for:', question);
+                
+                // Get farmer ID for personalized responses
+                const farmerId = localStorage.getItem('current_farmer_id');
+                const requestBody = {text: question};
+                if (farmerId) {
+                    requestBody.farmer_id = farmerId;
+                    console.log('Using farmer profile:', farmerId);
+                }
+                
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(requestBody)
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Received data:', data);
+
+                if (!data) {
+                    throw new Error('No data received from server');
+                }
+
+                // Populate Answer tab
+                const answerContent = document.getElementById('answer-content');
+                const statusIndicator = data.success ? 
+                    '<span class="success-indicator success">✓ Success</span>' : 
+                    '<span class="success-indicator failure">✗ Failed</span>';
+                
+                // Build images section if available
+                let imagesHtml = '';
+                if (data.image_urls && data.image_urls.length > 0) {
+                    imagesHtml = `
+                        <div style="margin-top: 20px; border-top: 1px solid #e1e5e9; padding-top: 15px;">
+                            <h4 style="color: #667eea; margin-bottom: 10px;">📸 Related Images</h4>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                                ${data.image_urls.map((imageUrl, index) => `
+                                    <div style="border: 1px solid #e1e5e9; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <img src="${imageUrl}" 
+                                             alt="Agricultural image ${index + 1}" 
+                                             style="width: 100%; height: 150px; object-fit: cover; display: block;"
+                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
+                                        />
+                                        <div style="display: none; padding: 20px; text-align: center; color: #666; font-size: 12px;">
+                                            Image failed to load
+                                        </div>
+                                        <div style="padding: 8px; font-size: 12px; color: #666; background: #f8f9fa;">
+                                            Image ${index + 1}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                answerContent.innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <strong>Agent Used:</strong> ${data.agent_used || 'Unknown'}
+                        ${statusIndicator}
+                    </div>
+                    <div class="answer-content">${data.answer || 'No answer provided'}</div>
+                    ${imagesHtml}
+                `;
+
+                // Update talking character and speak
+                TC.speechText = data.answer || '';
+                tcEls.speechText.textContent = TC.speechText || 'No answer provided';
+                tcSetThinking(false);
+                if (TC.speechText) {
+                    tcSpeakText(TC.speechText);
+                }
+
+                // Populate Sources tab (only on main page)
+                const sourcesList = document.getElementById('sources-list');
+                sourcesList.innerHTML = '';
+                const sources = data.sources || [];
+                
+                if (sources.length > 0) {
+                    sources.forEach((source, index) => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<strong>Source ${index + 1}:</strong> ${source}`;
+                        sourcesList.appendChild(li);
+                    });
+                } else {
+                    sourcesList.innerHTML = '<li style="color: #666; font-style: italic;">No sources available for this query</li>';
+                }
+
+                // Populate Chain of Thought tab (only on main page)
+                const cotContent = document.getElementById('cot-content');
+                cotContent.textContent = data.chain_of_thought || 'No chain of thought available for this query';
+
+                // Add visual indicators to tabs with content
+                updateTabIndicators(sources.length > 0, !!data.chain_of_thought);
+
+                console.log(`Request completed: Agent used: ${data.agent_used}`);
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('answer-content').innerHTML = `
+                    <div class="error">
+                        <strong>Error:</strong> ${error.message}
+                        <br><small>Please try again or check your connection.</small>
+                    </div>
+                `;
+                // Stop thinking/speaking on error
+                tcSetThinking(false);
+                tcStopSpeaking();
+            }
+        }
+
+        // Helper function to switch tabs programmatically
+        function showTabByName(tabName) {
+            // Hide all tab contents
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Remove active class from all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => button.classList.remove('active'));
+            
+            // Show selected tab content
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Add active class to corresponding button
+            const targetButton = Array.from(tabButtons).find(button => 
+                button.onclick.toString().includes(`'${tabName}'`)
+            );
+            if (targetButton) {
+                targetButton.classList.add('active');
+            }
+        }
+
+        // Update tab indicators based on content availability
+        function updateTabIndicators(hasSources, hasCoT) {
+            const sourcesButton = document.querySelector('[onclick*="sources"]');
+            const cotButton = document.querySelector('[onclick*="cot"]');
+            
+            // Add content indicators
+            if (hasSources && !sourcesButton.textContent.includes('●')) {
+                sourcesButton.innerHTML = '📚 Sources <span style="color: #28a745;">●</span>';
+            } else if (!hasSources) {
+                sourcesButton.innerHTML = '📚 Sources';
+            }
+            
+            if (hasCoT && !cotButton.textContent.includes('●')) {
+                cotButton.innerHTML = '🧠 Chain of Thought <span style="color: #28a745;">●</span>';
+            } else if (!hasCoT) {
+                cotButton.innerHTML = '🧠 Chain of Thought';
+            }
+        }
+
+        // Allow Enter key to submit question
+        document.getElementById('question').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                askQuestion();
+            }
+        });
+
+        // Initialize profile status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateProfileStatus();
+        });
+
+        // Update profile status indicator
+        function updateProfileStatus() {
+            const farmerId = localStorage.getItem('current_farmer_id');
+            const indicator = document.getElementById('profile-indicator');
+            
+            if (farmerId) {
+                // Load profile name for display
+                fetch(`/profile/${farmerId}`)
+                    .then(response => response.json())
+                    .then(profile => {
+                        if (profile.name) {
+                            indicator.innerHTML = `Profile: ${profile.name} (${profile.profile_completeness || 0}% complete)`;
+                            indicator.style.color = '#22543d';
+                        }
+                    })
+                    .catch(() => {
+                        indicator.innerHTML = 'Profile: Active (ID: ' + farmerId.substring(0, 8) + '...)';
+                        indicator.style.color = '#22543d';
+                    });
+            } else {
+                indicator.innerHTML = 'No profile selected - <a href="/profile-page" style="color: white; text-decoration: underline;">Create one for personalized advice</a>';
+                indicator.style.color = '#fed7d7';
+            }
+        }
+
+        // Focus on input when page loads
+        window.addEventListener('load', function() {
+            document.getElementById('question').focus();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Farmer Profile Management</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .nav-buttons {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .nav-buttons button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .nav-buttons button:hover {
+            background: #5a67d8;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-section {
+            margin-bottom: 25px;
+        }
+        
+        .form-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e1e5e9;
+            padding-bottom: 5px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+        
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+        
+        .tag-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        
+        .tag {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .add-tag-input {
+            border: 1px dashed #667eea;
+            background: transparent;
+            color: #667eea;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            min-width: 100px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e1e5e9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        .completeness-info {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .button-group {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        .button-group button {
+            margin: 0 10px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+        
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        .btn-danger:hover {
+            background: #c53030;
+        }
+        
+        .profile-list {
+            margin-top: 20px;
+        }
+        
+        .profile-card {
+            background: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .profile-info h4 {
+            margin: 0 0 5px 0;
+            color: #667eea;
+        }
+        
+        .profile-info p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .profile-actions button {
+            margin-left: 10px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .alert-error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Farmer Profile Management</h1>
+        <p>Create and manage your farming profile for personalized agricultural assistance</p>
+    </div>
+    
+    <div class="nav-buttons">
+        <button onclick="window.location.href='/'">Back to Chat</button>
+        <button onclick="showSection('create')">Create Profile</button>
+        <button onclick="showSection('list')">View Profiles</button>
+    </div>
+    
+    <div id="alerts"></div>
+    
+    <!-- Create/Edit Profile Section -->
+    <div id="create-section" class="container">
+        <div class="completeness-info">
+            <h3>Profile Completeness: <span id="completeness-percent">0%</span></h3>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p>Complete your profile to get more personalized farming advice!</p>
+        </div>
+        
+        <form id="profile-form">
+            <input type="hidden" id="farmer-id" name="farmer_id">
+            
+            <!-- Basic Information -->
+            <div class="form-section">
+                <h3>Basic Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Full Name *</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" name="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input type="tel" id="phone" name="phone">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Location Information -->
+            <div class="form-section">
+                <h3>Location & Farm Details</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="location">Farm Location *</label>
+                        <input type="text" id="location" name="location" placeholder="City, State, Country" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="farm-size">Farm Size (acres)</label>
+                        <input type="number" id="farm-size" name="farm_size_acres" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="experience">Years of Experience</label>
+                        <input type="number" id="experience" name="experience_years" min="0">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Farming Details -->
+            <div class="form-section">
+                <h3>Farming Details</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="farming-type">Farming Type</label>
+                        <select id="farming-type" name="farming_type">
+                            <option value="">Select farming type</option>
+                            <option value="organic">Organic</option>
+                            <option value="conventional">Conventional</option>
+                            <option value="mixed">Mixed</option>
+                            <option value="sustainable">Sustainable</option>
+                            <option value="permaculture">Permaculture</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="soil-type">Soil Type</label>
+                        <select id="soil-type" name="soil_type">
+                            <option value="">Select soil type</option>
+                            <option value="clay">Clay</option>
+                            <option value="sandy">Sandy</option>
+                            <option value="loamy">Loamy</option>
+                            <option value="silty">Silty</option>
+                            <option value="peaty">Peaty</option>
+                            <option value="chalky">Chalky</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="irrigation">Irrigation Type</label>
+                        <select id="irrigation" name="irrigation_type">
+                            <option value="">Select irrigation type</option>
+                            <option value="drip">Drip Irrigation</option>
+                            <option value="sprinkler">Sprinkler</option>
+                            <option value="flood">Flood Irrigation</option>
+                            <option value="rain-fed">Rain-fed</option>
+                            <option value="mixed">Mixed Methods</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Primary Crops</label>
+                        <div id="primary-crops" class="tag-input">
+                            <input type="text" class="add-tag-input" placeholder="Add crop..." onkeypress="addTag(event, 'primary-crops')">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Secondary Crops</label>
+                        <div id="secondary-crops" class="tag-input">
+                            <input type="text" class="add-tag-input" placeholder="Add crop..." onkeypress="addTag(event, 'secondary-crops')">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Livestock</label>
+                        <div id="livestock" class="tag-input">
+                            <input type="text" class="add-tag-input" placeholder="Add livestock..." onkeypress="addTag(event, 'livestock')">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Equipment</label>
+                        <div id="equipment" class="tag-input">
+                            <input type="text" class="add-tag-input" placeholder="Add equipment..." onkeypress="addTag(event, 'equipment')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Goals and Challenges -->
+            <div class="form-section">
+                <h3>Goals & Challenges</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Primary Goals</label>
+                        <div id="primary-goals" class="tag-input">
+                            <input type="text" class="add-tag-input" placeholder="Add goal..." onkeypress="addTag(event, 'primary-goals')">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Current Challenges</label>
+                        <div id="current-challenges" class="tag-input">
+                            <input type="text" class="add-tag-input" placeholder="Add challenge..." onkeypress="addTag(event, 'current-challenges')">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="budget-range">Budget Range</label>
+                        <select id="budget-range" name="budget_range">
+                            <option value="">Select budget range</option>
+                            <option value="under-10k">Under $10,000</option>
+                            <option value="10k-50k">$10,000 - $50,000</option>
+                            <option value="50k-100k">$50,000 - $100,000</option>
+                            <option value="100k-500k">$100,000 - $500,000</option>
+                            <option value="over-500k">Over $500,000</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="labor-type">Labor Type</label>
+                        <select id="labor-type" name="labor_type">
+                            <option value="">Select labor type</option>
+                            <option value="family">Family Labor</option>
+                            <option value="hired">Hired Labor</option>
+                            <option value="mixed">Mixed (Family + Hired)</option>
+                            <option value="cooperative">Cooperative</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button type="submit" class="btn-primary">Save Profile</button>
+                <button type="button" class="btn-secondary" onclick="clearForm()">Clear Form</button>
+                <button type="button" class="btn-danger hidden" id="delete-btn" onclick="deleteProfile()">Delete Profile</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Profile List Section -->
+    <div id="list-section" class="container hidden">
+        <h2>Existing Profiles</h2>
+        <div id="loading" class="loading hidden">Loading profiles...</div>
+        <div id="profile-list" class="profile-list"></div>
+    </div>
+
+    <script>
+        let currentFarmerId = null;
+        let profileData = {};
+        
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            showSection('create');
+            updateCompleteness();
+        });
+        
+        // Show different sections
+        function showSection(section) {
+            document.getElementById('create-section').classList.add('hidden');
+            document.getElementById('list-section').classList.add('hidden');
+            
+            if (section === 'create') {
+                document.getElementById('create-section').classList.remove('hidden');
+            } else if (section === 'list') {
+                document.getElementById('list-section').classList.remove('hidden');
+                loadProfiles();
+            }
+        }
+        
+        // Tag management functions
+        function addTag(event, containerId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const value = input.value.trim();
+                
+                if (value) {
+                    const container = document.getElementById(containerId);
+                    const tag = document.createElement('div');
+                    tag.className = 'tag';
+                    tag.innerHTML = `${value} <span class="remove" onclick="removeTag(this)">×</span>`;
+                    
+                    container.insertBefore(tag, input);
+                    input.value = '';
+                    updateCompleteness();
+                }
+            }
+        }
+        
+        function removeTag(element) {
+            element.parentElement.remove();
+            updateCompleteness();
+        }
+        
+        function getTagValues(containerId) {
+            const container = document.getElementById(containerId);
+            const tags = container.querySelectorAll('.tag');
+            return Array.from(tags).map(tag => tag.textContent.replace('×', '').trim());
+        }
+        
+        function setTagValues(containerId, values) {
+            const container = document.getElementById(containerId);
+            const input = container.querySelector('.add-tag-input');
+            
+            // Clear existing tags
+            container.querySelectorAll('.tag').forEach(tag => tag.remove());
+            
+            // Add new tags
+            values.forEach(value => {
+                if (value) {
+                    const tag = document.createElement('div');
+                    tag.className = 'tag';
+                    tag.innerHTML = `${value} <span class="remove" onclick="removeTag(this)">×</span>`;
+                    container.insertBefore(tag, input);
+                }
+            });
+        }
+        
+        // Update profile completeness
+        function updateCompleteness() {
+            const form = document.getElementById('profile-form');
+            const formData = new FormData(form);
+            
+            let totalFields = 0;
+            let filledFields = 0;
+            
+            // Core fields (weighted more heavily)
+            const coreFields = ['name', 'location', 'farming_type', 'farm_size_acres'];
+            coreFields.forEach(field => {
+                totalFields += 2;
+                if (formData.get(field) && formData.get(field).trim()) {
+                    filledFields += 2;
+                }
+            });
+            
+            // Tag fields
+            const tagFields = ['primary-crops', 'secondary-crops', 'livestock', 'equipment', 'primary-goals', 'current-challenges'];
+            tagFields.forEach(field => {
+                totalFields += 1;
+                if (getTagValues(field).length > 0) {
+                    filledFields += 1;
+                }
+            });
+            
+            // Optional fields
+            const optionalFields = ['email', 'phone', 'experience_years', 'soil_type', 'irrigation_type', 'budget_range', 'labor_type'];
+            optionalFields.forEach(field => {
+                totalFields += 1;
+                if (formData.get(field) && formData.get(field).trim()) {
+                    filledFields += 1;
+                }
+            });
+            
+            const completeness = totalFields > 0 ? Math.round((filledFields / totalFields) * 100) : 0;
+            
+            document.getElementById('completeness-percent').textContent = completeness + '%';
+            document.getElementById('progress-fill').style.width = completeness + '%';
+        }
+        
+        // Form submission
+        document.getElementById('profile-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const profileData = {};
+            
+            // Get form fields
+            for (let [key, value] of formData.entries()) {
+                if (value.trim()) {
+                    profileData[key] = value;
+                }
+            }
+            
+            // Get tag fields
+            profileData.primary_crops = getTagValues('primary-crops');
+            profileData.secondary_crops = getTagValues('secondary-crops');
+            profileData.livestock = getTagValues('livestock');
+            profileData.equipment = getTagValues('equipment');
+            profileData.primary_goals = getTagValues('primary-goals');
+            profileData.current_challenges = getTagValues('current-challenges');
+            
+            // Generate farmer ID if creating new profile
+            if (!currentFarmerId) {
+                profileData.farmer_id = 'farmer_' + Date.now();
+            } else {
+                profileData.farmer_id = currentFarmerId;
+            }
+            
+            try {
+                const method = currentFarmerId ? 'PUT' : 'POST';
+                const url = currentFarmerId ? `/profile/${currentFarmerId}` : '/profile';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(profileData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Profile saved successfully!', 'success');
+                    currentFarmerId = result.farmer_id || profileData.farmer_id;
+                    document.getElementById('farmer-id').value = currentFarmerId;
+                    document.getElementById('delete-btn').classList.remove('hidden');
+                    
+                    // Store farmer ID in localStorage for use in chat
+                    localStorage.setItem('current_farmer_id', currentFarmerId);
+                } else {
+                    showAlert('Error saving profile: ' + result.detail, 'error');
+                }
+            } catch (error) {
+                showAlert('Error saving profile: ' + error.message, 'error');
+            }
+        });
+        
+        // Load profiles list
+        async function loadProfiles() {
+            document.getElementById('loading').classList.remove('hidden');
+            
+            try {
+                const response = await fetch('/profiles');
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayProfiles(result.profiles);
+                } else {
+                    showAlert('Error loading profiles', 'error');
+                }
+            } catch (error) {
+                showAlert('Error loading profiles: ' + error.message, 'error');
+            }
+            
+            document.getElementById('loading').classList.add('hidden');
+        }
+        
+        // Display profiles
+        function displayProfiles(profiles) {
+            const container = document.getElementById('profile-list');
+            
+            if (profiles.length === 0) {
+                container.innerHTML = '<p>No profiles found. Create your first profile!</p>';
+                return;
+            }
+            
+            container.innerHTML = profiles.map(profile => `
+                <div class="profile-card">
+                    <div class="profile-info">
+                        <h4>${profile.name}</h4>
+                        <p>Location: ${profile.location || 'Not specified'}</p>
+                        <p>Profile Completeness: ${profile.completeness}%</p>
+                        <p>Last Updated: ${new Date(profile.updated_at).toLocaleDateString()}</p>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-secondary" onclick="editProfile('${profile.farmer_id}')">Edit</button>
+                        <button class="btn-primary" onclick="useProfile('${profile.farmer_id}')">Use for Chat</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Edit profile
+        async function editProfile(farmerId) {
+            try {
+                const response = await fetch(`/profile/${farmerId}`);
+                const profile = await response.json();
+                
+                if (response.ok) {
+                    currentFarmerId = farmerId;
+                    populateForm(profile);
+                    showSection('create');
+                    document.getElementById('delete-btn').classList.remove('hidden');
+                } else {
+                    showAlert('Error loading profile', 'error');
+                }
+            } catch (error) {
+                showAlert('Error loading profile: ' + error.message, 'error');
+            }
+        }
+        
+        // Use profile for chat
+        function useProfile(farmerId) {
+            localStorage.setItem('current_farmer_id', farmerId);
+            showAlert('Profile selected for personalized chat!', 'success');
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        }
+        
+        // Populate form with profile data
+        function populateForm(profile) {
+            const form = document.getElementById('profile-form');
+            
+            // Populate regular fields
+            Object.keys(profile).forEach(key => {
+                const field = form.querySelector(`[name="${key}"]`);
+                if (field && profile[key] !== null && profile[key] !== undefined) {
+                    field.value = profile[key];
+                }
+            });
+            
+            // Populate tag fields
+            if (profile.primary_crops) setTagValues('primary-crops', profile.primary_crops);
+            if (profile.secondary_crops) setTagValues('secondary-crops', profile.secondary_crops);
+            if (profile.livestock) setTagValues('livestock', profile.livestock);
+            if (profile.equipment) setTagValues('equipment', profile.equipment);
+            if (profile.primary_goals) setTagValues('primary-goals', profile.primary_goals);
+            if (profile.current_challenges) setTagValues('current-challenges', profile.current_challenges);
+            
+            updateCompleteness();
+        }
+        
+        // Delete profile
+        async function deleteProfile() {
+            if (!currentFarmerId) return;
+            
+            if (confirm('Are you sure you want to delete this profile? This action cannot be undone.')) {
+                try {
+                    const response = await fetch(`/profile/${currentFarmerId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        showAlert('Profile deleted successfully!', 'success');
+                        clearForm();
+                        currentFarmerId = null;
+                        document.getElementById('delete-btn').classList.add('hidden');
+                        localStorage.removeItem('current_farmer_id');
+                    } else {
+                        showAlert('Error deleting profile', 'error');
+                    }
+                } catch (error) {
+                    showAlert('Error deleting profile: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        // Clear form
+        function clearForm() {
+            document.getElementById('profile-form').reset();
+            currentFarmerId = null;
+            document.getElementById('farmer-id').value = '';
+            document.getElementById('delete-btn').classList.add('hidden');
+            
+            // Clear tag fields
+            ['primary-crops', 'secondary-crops', 'livestock', 'equipment', 'primary-goals', 'current-challenges'].forEach(id => {
+                const container = document.getElementById(id);
+                container.querySelectorAll('.tag').forEach(tag => tag.remove());
+            });
+            
+            updateCompleteness();
+        }
+        
+        // Show alert messages
+        function showAlert(message, type) {
+            const alertsContainer = document.getElementById('alerts');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            alertsContainer.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+        
+        // Add event listeners for form changes
+        document.getElementById('profile-form').addEventListener('input', updateCompleteness);
+        document.getElementById('profile-form').addEventListener('change', updateCompleteness);
+    </script>
+</body>
+</html>
