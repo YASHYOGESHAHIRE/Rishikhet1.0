@@ -348,6 +348,21 @@ class WebBasedAgent(BaseAgent):
                     }
                     results.append(topic_result)
                     print(f"[DEBUG] Added related topic {i+1}: {topic_result['title'][:50]}...")
+
+            # Also parse direct Results list if present
+            ddg_results = data.get('Results', []) or []
+            for i, item in enumerate(ddg_results[:max_results]):
+                if isinstance(item, dict) and (item.get('FirstURL') or item.get('URL')):
+                    url = item.get('FirstURL') or item.get('URL')
+                    title = item.get('Text') or item.get('Title') or url
+                    snippet = item.get('Text') or ''
+                    results.append({
+                        'title': title[:120],
+                        'url': url,
+                        'snippet': snippet,
+                        'source': 'DuckDuckGo Result'
+                    })
+                    print(f"[DEBUG] Added result {i+1}: {title[:50]}...")
             
             print(f"[DEBUG] Total results before robots.txt filtering: {len(results)}")
             
@@ -411,7 +426,20 @@ class WebBasedAgent(BaseAgent):
             if result['snippet']:
                 compiled_info.append(f"**{result['title']}**\n{result['snippet']}")
                 sources.append(result['url'])
-        
+
+        # If we still don't have any compiled info, try fetching page content of a few results
+        if not compiled_info:
+            print("[DEBUG] No snippets available, fetching page content for context...")
+            for result in search_results[:3]:
+                try:
+                    content = self.fetch_page_content(result['url'])
+                    if content:
+                        compiled_info.append(f"**{result['title']}**\n{content[:500]}...")
+                        sources.append(result['url'])
+                        print(f"[DEBUG] Fetched content from: {result['url']}")
+                except Exception as e:
+                    print(f"[DEBUG] Failed to fetch content for {result['url']}: {e}")
+
         # Use LLM to synthesize the information
         context = "\n\n".join(compiled_info)
         synthesis_prompt = f"""

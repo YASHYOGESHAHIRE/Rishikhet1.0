@@ -222,14 +222,14 @@ class SimpleAgriculturalAI:
     def ask(self, question: str) -> Dict[str, Any]:
         print(f"[DEBUG] SimpleAgriculturalAI.ask() called with: '{question}'")
         query = Query(text=question)
-        chain_of_thought = f"Starting multi-agent analysis for: '{question}'\n"
+        chain_of_thought = f"Starting single-agent routing for: '{question}'\n"
 
-        print("[DEBUG] Using AI-driven agent selection...")
-        # Use AI to intelligently select relevant agents
-        selected_agent_names = self.router.select_relevant_agents(query.text)
-        chain_of_thought += f"  - 🤖 AI selected agents: {', '.join(selected_agent_names)}\n"
+        print("[DEBUG] Using AI-driven single-agent routing...")
+        # Pick exactly ONE best agent for performance
+        best_agent = self.router.route_query(query.text)
+        chain_of_thought += f"  - 🤖 Router chose: {best_agent}\n"
         
-        return self.process_with_selected_agents(query, selected_agent_names, chain_of_thought)
+        return self.process_with_selected_agents(query, [best_agent], chain_of_thought)
 
     def analyze_image(self, image_bytes: bytes, mode: str = "plant") -> Dict[str, Any]:
         """Route image analysis through the dedicated vision agent so the main system remains the entrypoint."""
@@ -258,7 +258,7 @@ class SimpleAgriculturalAI:
     
     def process_with_selected_agents(self, query: Query, selected_agent_names: List[str], chain_of_thought: str) -> Dict[str, Any]:
         """
-        Process query using only the AI-selected agents (intelligent, not fixed cascading).
+        Process query using the AI-selected agents.
         """
         print(f"[DEBUG] Processing with selected agents: {selected_agent_names}")
         
@@ -267,10 +267,115 @@ class SimpleAgriculturalAI:
         agents_used = []
         all_image_urls = []
         all_videos = []
+        agent_details = []  # Collect per-agent outputs for UI
         
         # Create mapping of agent names to agent objects
         agent_map = {agent.name: agent for agent in self.all_agents}
-        
+
+        # --- Fast path: single-agent mode (no cross-agent synthesis) ---
+        if len(selected_agent_names) == 1:
+            agent_name = selected_agent_names[0]
+            if agent_name not in agent_map:
+                print(f"[DEBUG] Agent '{agent_name}' not found; falling back to farming_agent")
+                agent_name = 'farming_agent'
+            agent = agent_map.get(agent_name, self.farming_agent)
+            chain_of_thought += f"  - 🔄 Processing only with {agent_name}\n"
+            try:
+                confidence, _ = agent.can_handle(query)
+                print(f"[DEBUG] {agent_name} confidence: {confidence}")
+                result = agent.process(query)
+
+                # Build response directly based on agent type
+                if agent_name == 'image_agent' and getattr(result, 'image_urls', None):
+                    agent_details.append({
+                        'name': agent_name,
+                        'title': 'Images',
+                        'response': '',
+                        'sources': result.sources,
+                        'image_urls': result.image_urls,
+                        'videos': [],
+                        'success': True
+                    })
+                    return {
+                        'answer': 'Here are images related to your query.',
+                        'sources': result.sources,
+                        'chart_path': None,
+                        'image_urls': result.image_urls,
+                        'chain_of_thought': chain_of_thought,
+                        'agent_used': agent_name,
+                        'success': True,
+                        'agent_details': agent_details
+                    }
+                if agent_name == 'youtube_agent' and result.data and result.data.get('videos'):
+                    videos = result.data['videos']
+                    agent_details.append({
+                        'name': agent_name,
+                        'title': 'Videos',
+                        'response': '',
+                        'sources': result.sources,
+                        'image_urls': [],
+                        'videos': videos,
+                        'success': True
+                    })
+                    # Compose a concise textual answer listing the videos
+                    answer_lines = ["Here are relevant videos:"]
+                    for i, v in enumerate(videos, 1):
+                        answer_lines.append(f"{i}. {v.get('title','Video')} - {v.get('url')}")
+                    return {
+                        'answer': "\n".join(answer_lines),
+                        'sources': result.sources,
+                        'chart_path': None,
+                        'image_urls': [],
+                        'chain_of_thought': chain_of_thought,
+                        'agent_used': agent_name,
+                        'success': True,
+                        'agent_details': agent_details
+                    }
+
+                # Default: textual agent
+                answer_text = result.response or "No answer provided."
+                success = bool(result.success and (result.response or result.image_urls))
+                agent_details.append({
+                    'name': agent_name,
+                    'title': agent_name.replace('_', ' ').title(),
+                    'response': result.response or '',
+                    'sources': result.sources,
+                    'image_urls': getattr(result, 'image_urls', []) or [],
+                    'videos': (result.data or {}).get('videos', []) if getattr(result, 'data', None) else [],
+                    'success': success
+                })
+                return {
+                    'answer': answer_text,
+                    'sources': result.sources,
+                    'chart_path': None,
+                    'image_urls': getattr(result, 'image_urls', []) or [],
+                    'chain_of_thought': chain_of_thought,
+                    'agent_used': agent_name,
+                    'success': success,
+                    'agent_details': agent_details
+                }
+            except Exception as e:
+                print(f"[DEBUG] {agent_name} exception (single-agent): {e}")
+                agent_details.append({
+                    'name': agent_name,
+                    'title': 'Error',
+                    'response': str(e),
+                    'sources': [],
+                    'image_urls': [],
+                    'videos': [],
+                    'success': False
+                })
+                return {
+                    'answer': f"Error while processing with {agent_name}: {e}",
+                    'sources': [],
+                    'chart_path': None,
+                    'image_urls': [],
+                    'chain_of_thought': chain_of_thought,
+                    'agent_used': agent_name,
+                    'success': False,
+                    'agent_details': agent_details
+                }
+
         # Process each selected agent
         for agent_name in selected_agent_names:
             if agent_name not in agent_map:
@@ -298,6 +403,15 @@ class SimpleAgriculturalAI:
                             all_image_urls.extend(result.image_urls)
                             agents_used.append(agent_name)
                             chain_of_thought += f"    - ✅ {agent_name}: Found {len(result.image_urls)} images\n"
+                            agent_details.append({
+                                'name': agent_name,
+                                'title': 'Images',
+                                'response': '',
+                                'sources': result.sources,
+                                'image_urls': result.image_urls,
+                                'videos': [],
+                                'success': True
+                            })
                         elif agent_name == 'youtube_agent' and result.data and result.data.get('videos'):
                             # Handle YouTube videos separately (don't pass to LLM synthesis)
                             video_count = len(result.data['videos'])
@@ -309,6 +423,15 @@ class SimpleAgriculturalAI:
                             query.videos.extend(result.data['videos'])
                             # Also collect locally for final assembly
                             all_videos.extend(result.data['videos'])
+                            agent_details.append({
+                                'name': agent_name,
+                                'title': 'Videos',
+                                'response': '',
+                                'sources': result.sources,
+                                'image_urls': [],
+                                'videos': result.data['videos'],
+                                'success': True
+                            })
                         else:
                             # Regular text response
                             response_title = {
@@ -325,16 +448,52 @@ class SimpleAgriculturalAI:
                             all_sources.extend(result.sources)
                             agents_used.append(agent_name)
                             chain_of_thought += f"    - ✅ {agent_name}: Provided specialized knowledge\n"
+                            agent_details.append({
+                                'name': agent_name,
+                                'title': response_title,
+                                'response': result.response,
+                                'sources': result.sources,
+                                'image_urls': [],
+                                'videos': [],
+                                'success': True
+                            })
                     else:
                         print(f"[DEBUG] {agent_name} failed or empty response")
                         chain_of_thought += f"    - ❌ {agent_name}: No relevant information found\n"
+                        agent_details.append({
+                            'name': agent_name,
+                            'title': 'No relevant information',
+                            'response': '',
+                            'sources': [],
+                            'image_urls': [],
+                            'videos': [],
+                            'success': False
+                        })
                 else:
                     print(f"[DEBUG] {agent_name} skipped (low confidence: {confidence})")
                     chain_of_thought += f"    - ⚠️ {agent_name}: Query not relevant for this agent\n"
-                    
+                    agent_details.append({
+                        'name': agent_name,
+                        'title': 'Not relevant',
+                        'response': '',
+                        'sources': [],
+                        'image_urls': [],
+                        'videos': [],
+                        'success': False
+                    })
+                
             except Exception as e:
                 print(f"[DEBUG] {agent_name} exception: {e}")
                 chain_of_thought += f"    - ❌ {agent_name}: Error - {str(e)}\n"
+                agent_details.append({
+                    'name': agent_name,
+                    'title': 'Error',
+                    'response': str(e),
+                    'sources': [],
+                    'image_urls': [],
+                    'videos': [],
+                    'success': False
+                })
                 continue
         
         # Synthesize responses
@@ -408,7 +567,8 @@ class SimpleAgriculturalAI:
                     "image_urls": all_image_urls,
                     "chain_of_thought": chain_of_thought,
                     "agent_used": f"ai_selected_agents_{'+'.join(agents_used)}",
-                    "success": True
+                    "success": True,
+                    "agent_details": agent_details
                 }
             except Exception as e:
                 print(f"[DEBUG] Synthesis failed: {e}")
@@ -428,7 +588,8 @@ class SimpleAgriculturalAI:
                     "image_urls": all_image_urls,
                     "chain_of_thought": chain_of_thought,
                     "agent_used": f"ai_selected_agents_{'+'.join(agents_used)}",
-                    "success": True
+                    "success": True,
+                    "agent_details": agent_details
                 }
         else:
             # No text responses. If we have images or videos, still return success with a brief caption.
@@ -454,7 +615,8 @@ class SimpleAgriculturalAI:
                     "image_urls": all_image_urls,
                     "chain_of_thought": chain_of_thought,
                     "agent_used": f"ai_selected_agents_{'+'.join(agents_used) if agents_used else 'visual_only'}",
-                    "success": True
+                    "success": True,
+                    "agent_details": agent_details
                 }
             
             # Truly no content
@@ -465,7 +627,8 @@ class SimpleAgriculturalAI:
                 "image_urls": [],
                 "chain_of_thought": chain_of_thought,
                 "agent_used": "ai_selected_agents_failed",
-                "success": False
+                "success": False,
+                "agent_details": agent_details
             }
 
         chain_of_thought += f"  - 🕵️‍♂️ AI Router selected '{best_agent.name}'.\n"

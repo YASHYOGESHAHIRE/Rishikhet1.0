@@ -74,7 +74,8 @@ async def ask_question(request: QuestionRequest):
             "agent_used": result.get("agent_used", "unknown"),
             "success": result.get("success", False),
             "chart_path": result.get("chart_path", None),
-            "image_urls": result.get("image_urls", [])  # Include image URLs for direct display
+            "image_urls": result.get("image_urls", []),  # Include image URLs for direct display
+            "agent_details": result.get("agent_details", [])
         }
         
         print(f"Sending response: {len(str(response_data))} characters")

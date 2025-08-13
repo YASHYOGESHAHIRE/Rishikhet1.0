@@ -166,6 +166,20 @@
             color: #721c24;
         }
 
+        /* Agent accordion */
+        .agent-accordion { margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 10px; }
+        .agent-item { border: 1px solid #e5e7eb; border-radius: 8px; margin: 10px 0; overflow: hidden; background: #fff; }
+        .agent-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; background: #f9fafb; }
+        .agent-title { font-weight: 600; color: #374151; display: flex; align-items: center; gap: 8px; }
+        .agent-badge { font-size: 12px; padding: 2px 8px; border-radius: 9999px; }
+        .agent-badge.success { background: #d1fae5; color: #065f46; }
+        .agent-badge.fail { background: #fee2e2; color: #991b1b; }
+        .agent-arrow { transition: transform 0.2s ease; color: #4b5563; }
+        .agent-content { display: none; padding: 14px; }
+        .agent-content.open { display: block; }
+        .agent-sources { margin-top: 10px; font-size: 13px; color: #4b5563; }
+        .agent-sources li { margin-left: 18px; }
+
         /* Talking Character styles */
         .character-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 12px; }
         .speech-bubble { position: relative; background: #ecfeff; border-radius: 16px; padding: 12px 14px; min-height: 60px; min-width: 160px; max-width: 520px; text-align: center; color: #1f2937; box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: none; }
@@ -198,6 +212,13 @@
             border-radius: 9999px; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         }
+        
+        /* Try-out questions */
+        .tryout-container { margin-top: 10px; }
+        .tryout-title { font-size: 13px; color: #4b5563; margin-bottom: 6px; }
+        .tryout-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .try-chip { background: #eef2ff; color: #3730a3; border: 1px solid #e0e7ff; padding: 6px 10px; border-radius: 9999px; font-size: 13px; cursor: pointer; }
+        .try-chip:hover { background: #e0e7ff; }
     </style>
 </head>
 <body>
@@ -209,7 +230,7 @@
         <div id="profile-status" style="margin-top: 10px; font-size: 14px;">
             <span id="profile-indicator">No profile selected</span>
             <button onclick="window.location.href='/profile-page'" style="margin-left: 10px; padding: 5px 10px; font-size: 12px;">Manage Profile</button>
-            <button onclick="window.location.href='/questions'" style="margin-left: 10px; padding: 5px 10px; font-size: 12px;">Questions Try Out</button>
+            <button onclick="document.getElementById('tryout-section')?.scrollIntoView({behavior:'smooth'});" style="margin-left: 10px; padding: 5px 10px; font-size: 12px;">Questions Try Out</button>
         </div>
     </div>
 
@@ -238,9 +259,9 @@
 
         <!-- Character Stage -->
         <div class="character-stage">
-            <img class="character-face" src="/character/Picture10.png" alt="Character Face" />
+            <img class="character-face" src="character/Picture10.png" alt="Character Face" />
             <div class="character-mouth-slot">
-                <img id="tc-mouth" class="character-mouth" src="/character/aori.png" alt="Character Mouth" />
+                <img id="tc-mouth" class="character-mouth" src="character/aori.png" alt="Character Mouth" />
             </div>
         </div>
     </div>
@@ -249,6 +270,49 @@
     <div class="input-section">
         <input type="text" id="question" placeholder="Enter your agricultural question here..." />
         <button onclick="askQuestion()">Ask Question</button>
+        <span style="margin-left:8px; font-size:12px; color:#6b7280;">Tip: the page will scroll to the answer below automatically.</span>
+        <div id="tryout-section" class="tryout-container">
+            <div class="tryout-title">Try these curated questions</div>
+            
+            <!-- Quick Picks (existing) -->
+            <div class="tryout-chips" style="margin-bottom: 10px;">
+                <span class="try-chip" onclick="tryQuestion('What is the best time to plant tomatoes in Maharashtra?')">Planting time for tomatoes</span>
+                <span class="try-chip" onclick="tryQuestion('Will it rain in New Delhi this weekend?')">Rain forecast for Delhi</span>
+                <span class="try-chip" onclick="tryQuestion('How to control aphids on chili plants?')">Control aphids on chili</span>
+                <span class="try-chip" onclick="tryQuestion('Show images of drip irrigation setup for a small farm')">Images: drip irrigation</span>
+                <span class="try-chip" onclick="tryQuestion('Latest market price trends for wheat in India')">Wheat price trends</span>
+            </div>
+
+            <!-- Agent 1: Crop Production and Farming Practices -->
+            <div style="font-weight:600; color:#4f46e5; margin: 8px 0 6px;">Agent 1 · Crop Production and Farming Practices</div>
+            <div class="tryout-chips">
+                <span class="try-chip" onclick="tryQuestion('Whiteflies are attacking my cotton crop. How can I make a bio-pesticide at home to control them?')">Whiteflies in cotton – bio-pesticide</span>
+                <span class="try-chip" onclick="tryQuestion('My paddy crop has brown spots on the leaves. What disease is this and what medicine should I spray?')">Paddy leaves brown spots</span>
+                <span class="try-chip" onclick="tryQuestion('I have prepared my field for planting soybeans. What should I do next before sowing the seeds?')">Before sowing soybeans</span>
+            </div>
+
+            <!-- Agent 2: Resource, Management, Technology -->
+            <div style="font-weight:600; color:#4f46e5; margin: 10px 0 6px;">Agent 2 · Resource, Management, Technology</div>
+            <div class="tryout-chips">
+                <span class="try-chip" onclick="tryQuestion('How can I control the haryaali weed (Weed Management) in my fields before planting?')">Control haryaali weed (pre-plant)</span>
+                <span class="try-chip" onclick="tryQuestion('I want to start beekeeping. What is the first thing I need to do?')">Start beekeeping – first step</span>
+            </div>
+
+            <!-- Agent 3: Business, Management -->
+            <div style="font-weight:600; color:#4f46e5; margin: 10px 0 6px;">Agent 3 · Business, Management</div>
+            <div class="tryout-chips">
+                <span class="try-chip" onclick="tryQuestion('How do I apply for a Kisan Credit Card to get a loan for my farm?')">Apply for Kisan Credit Card</span>
+                <span class="try-chip" onclick="tryQuestion('Is there any government scheme to get a subsidy for building a small cold storage unit?')">Subsidy for cold storage</span>
+                <span class="try-chip" onclick="tryQuestion('How can I preserve my mango harvest for a few weeks before selling?')">Preserve mango harvest</span>
+            </div>
+
+            <!-- Agent 4: Animal Husbandry -->
+            <div style="font-weight:600; color:#4f46e5; margin: 10px 0 6px;">Agent 4 · Animal Husbandry</div>
+            <div class="tryout-chips">
+                <span class="try-chip" onclick="tryQuestion('I want to build a new shed for my cattle. What is the best way to build it to keep the animals healthy?')">Best design for cattle shed</span>
+                <span class="try-chip" onclick="tryQuestion('How can I tell if my buffalo is ready for Artificial Insemination?')">Buffalo readiness for AI</span>
+            </div>
+        </div>
     </div>
 
     <!-- Image Analysis (Plant/Soil) -->
@@ -314,6 +378,14 @@
             event.target.classList.add('active');
         }
 
+        // --- Try-out chip helper ---
+        function tryQuestion(text) {
+            const input = document.getElementById('question');
+            input.value = text || '';
+            // Ensure results container is visible and ask immediately
+            askQuestion();
+        }
+
         // --- Talking Character State ---
         const TC = {
             isThinking: false,
@@ -323,7 +395,7 @@
             selectedVoice: localStorage.getItem('selected_voice') || '',
             speechSpeed: parseFloat(localStorage.getItem('speech_speed') || '0.7'),
             mouthImages: [
-                '/character/aori.png','/character/cdgk.png','/character/e.png','/character/fv.png','/character/ln.png','/character/rest.png','/character/restneutral.png','/character/th.png'
+                'character/aori.png','character/cdgk.png','character/e.png','character/fv.png','character/ln.png','character/rest.png','character/restneutral.png','character/th.png'
             ],
             animTimer: null,
         };
@@ -502,11 +574,10 @@
                     resultsContainer.style.display = 'block';
                 }
                 showTabByName('answer');
-
-                // Talking character speak
-                tcSetThinking(false);
-                if (data.answer) tcSpeakText(data.answer);
-
+                // Auto-scroll after we render the answer
+                try {
+                    resultsContainer.scrollIntoView({behavior: 'smooth', block: 'start'});
+                } catch (e) { /* noop */ }
                 // Status
                 vision.status.textContent = data.success ? 'Done.' : 'Failed.';
             } catch (err) {
@@ -527,6 +598,128 @@
                 showTabByName('answer');
             }
         });
+
+        // --- Agent Accordion Helpers ---
+        function renderAgentAccordion(agentDetails) {
+            const container = document.getElementById('agent-accordion');
+            if (!container) return;
+            container.innerHTML = '';
+            if (!agentDetails || agentDetails.length === 0) return;
+
+            const title = document.createElement('h4');
+            title.style.color = '#667eea';
+            title.style.margin = '10px 0';
+            title.textContent = '🔎 Agent Responses (toggle to view)';
+            container.appendChild(title);
+
+            agentDetails.forEach((item, idx) => {
+                const delay = Math.min(idx * 120, 1200);
+                setTimeout(() => container.appendChild(createAgentItem(item)), delay);
+            });
+        }
+
+        function createAgentItem(item) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'agent-item';
+
+            const header = document.createElement('div');
+            header.className = 'agent-header';
+
+            const title = document.createElement('div');
+            title.className = 'agent-title';
+            const arrow = document.createElement('span');
+            arrow.className = 'agent-arrow';
+            arrow.textContent = '▶';
+            const nameEl = document.createElement('span');
+            nameEl.textContent = prettyAgentTitle(item);
+            title.appendChild(arrow);
+            title.appendChild(nameEl);
+
+            const badge = document.createElement('span');
+            badge.className = 'agent-badge ' + (item.success ? 'success' : 'fail');
+            badge.textContent = item.success ? 'Success' : 'No Answer';
+
+            header.appendChild(title);
+            header.appendChild(badge);
+
+            const content = document.createElement('div');
+            content.className = 'agent-content';
+            content.innerHTML = buildAgentContentHTML(item);
+
+            header.addEventListener('click', () => {
+                const isOpen = content.classList.contains('open');
+                if (isOpen) {
+                    content.classList.remove('open');
+                    arrow.textContent = '▶';
+                } else {
+                    content.classList.add('open');
+                    arrow.textContent = '▼';
+                }
+            });
+
+            wrapper.appendChild(header);
+            wrapper.appendChild(content);
+            return wrapper;
+        }
+
+        function prettyAgentTitle(item) {
+            const nameMap = {
+                'farming_agent': 'Farming Agent',
+                'web_based_agent': 'Web-Based Agent',
+                'rain_forecast_agent': 'Rain Forecast Agent',
+                'rishikhet_agent_1': 'Rishikhet Agent 1',
+                'rishikhet_agent_2': 'Rishikhet Agent 2',
+                'rishikhet_agent_3': 'Rishikhet Agent 3',
+                'rishikhet_agent_4': 'Rishikhet Agent 4',
+                'image_agent': 'Image Agent',
+                'youtube_agent': 'YouTube Agent',
+                'vision_analysis_agent': 'Vision Analysis Agent',
+            };
+            if (item && item.title && item.title !== 'Images' && item.title !== 'Videos') return item.title;
+            return nameMap[item && item.name] || (item && item.name) || 'Agent';
+        }
+
+        function buildAgentContentHTML(item) {
+            let html = '';
+            if (item.response) {
+                html += `<div class="answer-content">${item.response}</div>`;
+            }
+            if (item.image_urls && item.image_urls.length) {
+                html += `
+                    <div style="margin-top: 10px;">
+                        <div style="font-weight:600; margin-bottom:6px;">Images</div>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;">
+                            ${item.image_urls.map((u, i) => `
+                                <div style="border:1px solid #e5e7eb; border-radius:6px; overflow:hidden;">
+                                    <img src="${u}" alt="Image ${i+1}" style="width:100%; height:120px; object-fit:cover;" />
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            }
+            if (item.videos && item.videos.length) {
+                html += `
+                    <div style="margin-top: 10px;">
+                        <div style="font-weight:600; margin-bottom:6px;">Videos</div>
+                        <ul style="padding-left: 16px;">
+                            ${item.videos.map((v, i) => `
+                                <li><a href="${v.url}" target="_blank">${i+1}. ${v.title || v.url}</a></li>
+                            `).join('')}
+                        </ul>
+                    </div>`;
+            }
+            if (item.sources && item.sources.length) {
+                html += `
+                    <div class="agent-sources">
+                        <div style="font-weight:600;">Sources:</div>
+                        <ul>
+                            ${item.sources.map((s) => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>`;
+            }
+            if (!html) html = '<div style="color:#6b7280;">No details provided by this agent.</div>';
+            return html;
+        }
 
         // Enhanced question asking with tabbed interface
         async function askQuestion() {
@@ -549,6 +742,10 @@
                     </div>
                 </div>
             `;
+            // Auto-scroll to results when loading starts
+            try {
+                resultsContainer.scrollIntoView({behavior: 'smooth', block: 'start'});
+            } catch (e) { /* noop */ }
             
             // Clear other tabs
             document.getElementById('sources-list').innerHTML = '';
@@ -620,6 +817,7 @@
                     `;
                 }
                 
+                // Base synthesized answer
                 answerContent.innerHTML = `
                     <div style="margin-bottom: 15px;">
                         <strong>Agent Used:</strong> ${data.agent_used || 'Unknown'}
@@ -627,7 +825,20 @@
                     </div>
                     <div class="answer-content">${data.answer || 'No answer provided'}</div>
                     ${imagesHtml}
+                    <div id="agent-accordion" class="agent-accordion"></div>
                 `;
+
+                // Render per-agent collapsible items
+                try {
+                    renderAgentAccordion(data.agent_details || []);
+                } catch (e) {
+                    console.warn('Could not render agent accordion:', e);
+                }
+
+                // Auto-scroll to results after render
+                try {
+                    resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (e) { /* noop */ }
 
                 // Update talking character and speak
                 TC.speechText = data.answer || '';
@@ -672,6 +883,11 @@
                 // Stop thinking/speaking on error
                 tcSetThinking(false);
                 tcStopSpeaking();
+                // Bring user to the error message
+                try {
+                    const resultsContainer = document.getElementById('results-container');
+                    if (resultsContainer) resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (e) { /* noop */ }
             }
         }
 
