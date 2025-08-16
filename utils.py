@@ -31,6 +31,7 @@ GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 PIXABAY_API_KEY = os.environ.get("PIXABAY_API_KEY")
 YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY")
+OGD_API_KEY = os.environ.get("OGD_API_KEY")
 
 # Configure Google Generative AI only if key is present
 if GOOGLE_API_KEY:
@@ -64,6 +65,7 @@ class Query:
     text: str
     intent: str = "unknown"
     confidence: float = 0.0
+    farmer_id: Optional[str] = None  # Optional farmer ID for personalized responses
 
 # ============================================================================
 # CACHE SYSTEM

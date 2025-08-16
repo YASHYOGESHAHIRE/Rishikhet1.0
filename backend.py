@@ -58,8 +58,8 @@ async def ask_question(request: QuestionRequest):
         if farmer_context:
             enhanced_question = f"Context: {farmer_context}\n\nQuestion: {request.text}"
         
-        # Call your existing AI assistant ask method
-        result = ai_assistant.ask(enhanced_question)
+        # Call your existing AI assistant ask method with farmer_id
+        result = ai_assistant.ask(enhanced_question, farmer_id=request.farmer_id)
         
         print("AI assistant processing completed!")
         print(f"AI result keys: {result.keys()}")
@@ -159,6 +159,12 @@ async def get_profile(farmer_id: str):
 async def update_profile(farmer_id: str, updates: Dict[str, Any]):
     """Update farmer profile"""
     try:
+        # Validate that the profile exists first
+        existing_profile = profile_manager.load_profile(farmer_id)
+        if not existing_profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        
+        # Update the profile
         profile = profile_manager.update_profile(farmer_id, updates)
         if profile:
             return JSONResponse(content={
@@ -168,9 +174,14 @@ async def update_profile(farmer_id: str, updates: Dict[str, Any]):
                 "profile": profile.dict()
             })
         else:
-            raise HTTPException(status_code=404, detail="Profile not found")
+            raise HTTPException(status_code=500, detail="Failed to update profile")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error updating profile {farmer_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.delete("/profile/{farmer_id}")
 async def delete_profile(farmer_id: str):

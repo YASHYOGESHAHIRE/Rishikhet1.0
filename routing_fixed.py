@@ -213,12 +213,12 @@ class SimpleAgriculturalAI:
             print(f"❌ LLM response failed: {e}")
             return f"Error getting LLM response: {str(e)}"
 
-    def ask(self, question: str) -> Dict[str, Any]:
+    def ask(self, question: str, farmer_id: Optional[str] = None) -> Dict[str, Any]:
         """
         FIXED: Main method to ask a question to the agricultural AI system.
         """
-        print(f"[DEBUG] SimpleAgriculturalAI.ask() called with: '{question}'")
-        query = Query(text=question)
+        print(f"[DEBUG] SimpleAgriculturalAI.ask() called with: '{question}' and farmer_id: {farmer_id}")
+        query = Query(text=question, farmer_id=farmer_id)
         chain_of_thought = f"🔍 Starting multi-agent analysis for: '{question}'\n"
 
         try:

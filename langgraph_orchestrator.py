@@ -28,6 +28,7 @@ class AgentState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
     query: str
     original_query: str
+    farmer_id: Optional[str]
     selected_agents: List[str]
     agent_results: Dict[str, AgentResult]
     collaboration_history: List[Dict[str, Any]]
@@ -197,7 +198,8 @@ class LangGraphOrchestrator:
         """Execute the selected agents and collect their results."""
         query = state["query"]
         selected_agents = state["selected_agents"]
-        query_obj = Query(text=query)
+        farmer_id = state.get("farmer_id")
+        query_obj = Query(text=query, farmer_id=farmer_id)
         
         # Execute agents in parallel (simulated)
         for agent_name in selected_agents:
@@ -401,12 +403,13 @@ class LangGraphOrchestrator:
             formatted.append(f"- {agent_name}: {result.response[:200]}... (confidence: {result.confidence:.2f})")
         return "\n".join(formatted)
     
-    def process_query(self, query: str) -> AgentResult:
+    def process_query(self, query: str, farmer_id: Optional[str] = None) -> AgentResult:
         """
         Process a query using the LangGraph workflow.
         
         Args:
             query: The user's query string
+            farmer_id: Optional farmer ID for personalized responses
             
         Returns:
             AgentResult: The final synthesized result
@@ -416,6 +419,7 @@ class LangGraphOrchestrator:
             messages=[HumanMessage(content=query)],
             query=query,
             original_query=query,
+            farmer_id=farmer_id,
             selected_agents=[],
             agent_results={},
             collaboration_history=[],
@@ -463,17 +467,18 @@ class LangGraphAgriculturalAI:
         """Initialize the LangGraph-based AI system."""
         self.orchestrator = LangGraphOrchestrator()
     
-    def ask(self, question: str) -> AgentResult:
+    def ask(self, question: str, farmer_id: Optional[str] = None) -> AgentResult:
         """
         Ask a question and get a comprehensive answer using LangGraph orchestration.
         
         Args:
             question: The user's question
+            farmer_id: Optional farmer ID for personalized responses
             
         Returns:
             AgentResult: Comprehensive result from agent collaboration
         """
-        return self.orchestrator.process_query(question)
+        return self.orchestrator.process_query(question, farmer_id=farmer_id)
     
     def get_available_agents(self) -> List[str]:
         """Get list of available agents."""
@@ -513,7 +518,7 @@ def demo_langgraph():
         print(f"\n🔍 Query: {query}")
         print("-" * 30)
         
-        result = ai.ask(query)
+        result = ai.ask(query, farmer_id=None)
         print(f"Agent: {result.agent_name}")
         print(f"Confidence: {result.confidence:.2f}")
         print(f"Response: {result.response[:200]}...")
@@ -548,7 +553,7 @@ def chat_langgraph():
                 continue
             
             print("🤖 AI: Processing your query...")
-            result = ai.ask(user_input)
+            result = ai.ask(user_input, farmer_id=None)
             
             print(f"\n🤖 AI ({result.agent_name}, confidence: {result.confidence:.2f}):")
             print(result.response)

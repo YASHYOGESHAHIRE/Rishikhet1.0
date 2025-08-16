@@ -12,6 +12,10 @@ from langchain_groq import ChatGroq
 from urllib.robotparser import RobotFileParser
 from urllib.parse import urljoin, urlparse
 import re
+import pandas as pd
+import matplotlib.pyplot as plt
+from prophet import Prophet
+import holidays
 
 from utils import (
     AgentResult, Query, cache, GROQ_API_KEY, PIXABAY_API_KEY, YOUTUBE_API_KEY,
@@ -1089,4 +1093,355 @@ class YouTubeAgent(BaseAgent):
                 success=False,
                 response=f"Error parsing YouTube API response: {str(e)}",
                 confidence=0.0
+            )
+
+
+# ============================================================================
+# PRICE PREDICTION AGENT
+# ============================================================================
+
+class PricePredictionAgent(BaseAgent):
+    def __init__(self):
+        topics = ["price", "prediction", "forecast", "market", "commodity", "prices", "trend", "analysis"]
+        super().__init__("price_prediction_agent", topics=topics, description=(
+            "Predicts agricultural commodity prices using historical data and Prophet forecasting model."
+        ))
+        self.API_KEY = "579b464db66ec23bdd0000017b56220866944043721237ffc3490f00"
+        self.API1_URL = "https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24"
+        self.API2_URL = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070"
+        self.VISUALIZER_PATH = "/tmp/price_prediction_charts"
+        
+        # Commodity mapping for common variations
+        self.commodity_mapping = {
+            "corn": ["Maize", "Corn", "Sweet Corn"],
+            "maize": ["Maize", "Corn", "Sweet Corn"],
+            "wheat": ["Wheat", "Atta"],
+            "rice": ["Rice", "Paddy", "Basmati"],
+            "onion": ["Onion", "Pyaz"],
+            "tomato": ["Tomato", "Tamatar"],
+            "potato": ["Potato", "Aloo"],
+            "sugar": ["Sugar", "Gur", "Jaggery"],
+            "cotton": ["Cotton", "Kapas"],
+            "soybean": ["Soybean", "Soya"],
+            "pulses": ["Pulses", "Dal", "Lentils"],
+            "milk": ["Milk", "Doodh"],
+            "eggs": ["Eggs", "Anda"]
+        }
+
+    def find_best_commodity_match(self, requested_commodity: str) -> str:
+        """Find the best commodity match from the mapping or return the original."""
+        requested_lower = requested_commodity.lower()
+        
+        # Check if we have a mapping for this commodity
+        if requested_lower in self.commodity_mapping:
+            return self.commodity_mapping[requested_lower][0]  # Return the first (most common) variant
+        
+        # If no mapping found, return the original (capitalized)
+        return requested_commodity.title()
+
+    def fetch_data(self, api_url, filters, limit=50000):
+        """Fetch raw data from API with a given set of filters."""
+        params = {
+            "api-key": self.API_KEY,
+            "format": "json",
+            "limit": limit
+        }
+        params.update(filters)
+
+        try:
+            response = requests.get(api_url, params=params, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+
+            if 'records' in data and data['records']:
+                print(f"✅ {api_url} fetched {len(data['records'])} records.")
+                return pd.DataFrame(data['records'])
+            else:
+                print(f"⚠️ {api_url} returned no data.")
+                return None
+        except requests.exceptions.Timeout:
+            print(f"❌ {api_url} request timed out.")
+        except requests.exceptions.RequestException as e:
+            print(f"❌ {api_url} error: {e}")
+        return None
+
+    def get_holidays(self, years=[2023, 2024, 2025]):
+        """Generate a DataFrame of Indian holidays and Sundays."""
+        holiday_df = pd.DataFrame([])
+        for date, name in sorted(holidays.India(years=years).items()):
+            holiday_df = pd.concat([
+                holiday_df,
+                pd.DataFrame({'ds': [date], 'holiday': [f"India-Holidays: {name}"]})
+            ], ignore_index=True)
+
+        start_date = pd.to_datetime(f'{years[0]}-01-01')
+        end_date = pd.to_datetime(f'{years[-1]}-12-31')
+        sundays = pd.date_range(start=start_date, end=end_date, freq='W-SUN')
+        sunday_holidays = pd.DataFrame({'ds': sundays, 'holiday': 'Sunday'})
+        
+        holiday_df = pd.concat([holiday_df, sunday_holidays], ignore_index=True)
+        holiday_df['ds'] = pd.to_datetime(holiday_df['ds'])
+        return holiday_df
+
+    def process_data_and_forecast(self, state, district, commodity, market, forecast_days=7):
+        """
+        Main function to process data, train the model, and generate a price forecast.
+        """
+        # --- 1. Fetch Data ---
+        # Try to find the best commodity match
+        mapped_commodity = self.find_best_commodity_match(commodity)
+        print(f"🔍 Looking for commodity: '{commodity}' -> mapped to: '{mapped_commodity}'")
+        
+        api_params1 = {"filters[State]": state, "filters[District]": district, "filters[Commodity]": mapped_commodity}
+        df = self.fetch_data(self.API1_URL, api_params1)
+        
+        if df is None or df.empty:
+            print("ℹ️ Trying API 2...")
+            api_params2 = {"filters[state.keyword]": state, "filters[district]": district, "filters[commodity]": mapped_commodity}
+            df = self.fetch_data(self.API2_URL, api_params2, limit=50000)
+
+        if df is None or df.empty:
+            # Try alternative commodity names from mapping
+            if commodity.lower() in self.commodity_mapping:
+                alternatives = self.commodity_mapping[commodity.lower()][1:]  # Skip the first one we already tried
+                for alt_commodity in alternatives:
+                    print(f"🔄 Trying alternative commodity name: '{alt_commodity}'")
+                    api_params1 = {"filters[State]": state, "filters[District]": district, "filters[Commodity]": alt_commodity}
+                    df = self.fetch_data(self.API1_URL, api_params1)
+                    if df is not None and not df.empty:
+                        mapped_commodity = alt_commodity
+                        break
+                    
+                    if df is None or df.empty:
+                        api_params2 = {"filters[state.keyword]": state, "filters[district]": district, "filters[commodity]": alt_commodity}
+                        df = self.fetch_data(self.API2_URL, api_params2, limit=50000)
+                        if df is not None and not df.empty:
+                            mapped_commodity = alt_commodity
+                            break
+
+        if df is None or df.empty:
+            return f"❌ Failed to fetch data for '{commodity}' (tried: {mapped_commodity} and alternatives).", None, None
+
+        # --- 2. Filter Data ---
+        df.columns = [col.lower().replace('.', '_') for col in df.columns]
+        
+        required_cols = ["market", "variety", "grade", "modal_price", "arrival_date"]
+        if not all(col in df.columns for col in required_cols):
+            return "⚠️ Required columns not found in data after normalization.", None, None
+
+        df_filtered = df[
+            (df["market"].str.lower().eq(market.lower())) 
+            # (df["variety"].str.lower().eq(variety.lower())) &
+            # (df["grade"].str.lower().eq(grade.lower()))
+        ].copy()  # Create a copy to avoid SettingWithCopyWarning
+
+        if df_filtered.empty:
+            return "⚠️ No data after filtering.", None, None
+        
+        # --- 3. Prepare for Prophet model ---
+        df_filtered.loc[:, "arrival_date"] = pd.to_datetime(df_filtered["arrival_date"], errors='coerce')
+        df_filtered = df_filtered.dropna(subset=["arrival_date", "modal_price"])
+        df_filtered.loc[:, "modal_price"] = pd.to_numeric(df_filtered["modal_price"], errors='coerce')
+        df_filtered = df_filtered.dropna(subset=["modal_price"])
+        df_filtered = df_filtered.sort_values("arrival_date")
+
+        # Handle duplicate dates by taking the mean price for each date
+        df_filtered = df_filtered.groupby("arrival_date")["modal_price"].mean().reset_index()
+        
+        # Ensure modal_price is numeric after grouping
+        df_filtered["modal_price"] = pd.to_numeric(df_filtered["modal_price"], errors='coerce')
+        df_filtered = df_filtered.dropna(subset=["modal_price"])
+        
+        prophet_df = df_filtered[["arrival_date", "modal_price"]].rename(columns={"arrival_date": "ds", "modal_price": "y"})
+        prophet_df = prophet_df.set_index("ds").asfreq("D").interpolate(method="linear").reset_index()
+
+        # --- 4. Get holidays ---
+        holiday_df = self.get_holidays()
+
+        # --- 5. Prophet Model and Forecast ---
+        model = Prophet(
+            yearly_seasonality=True,
+            weekly_seasonality=True,
+            daily_seasonality=False,
+            seasonality_mode="additive",
+            changepoint_prior_scale=0.5,
+            holidays=holiday_df
+        )
+        model.fit(prophet_df)
+        
+        # Create future dataframe starting from today for the next 7 days
+        from datetime import datetime, timedelta
+        today = datetime.now().date()
+        future_dates = [today + timedelta(days=i) for i in range(forecast_days)]
+        future = pd.DataFrame({'ds': future_dates})
+        
+        forecast = model.predict(future)
+
+        # --- 6. Generate plots ---
+        os.makedirs(self.VISUALIZER_PATH, exist_ok=True)
+        
+        plot_path_forecast = os.path.join(self.VISUALIZER_PATH, "price_forecast.png")
+        fig1 = model.plot(forecast)
+        plt.title("Price Forecast", fontsize=14)
+        plt.xlabel("Date")
+        plt.ylabel("Price")
+        plt.grid(True)
+        plt.savefig(plot_path_forecast)
+        plt.close(fig1)
+
+        plot_path_components = os.path.join(self.VISUALIZER_PATH, "price_components.png")
+        fig2 = model.plot_components(forecast)
+        plt.savefig(plot_path_components)
+        plt.close(fig2)
+
+        return forecast, [plot_path_forecast, plot_path_components]
+
+    def process(self, query: Query) -> AgentResult:
+        """Process price prediction query and return forecast results."""
+        
+        # Initialize parameters with defaults
+        params = {
+            "state": "Maharashtra",
+            "district": "Dhule", 
+            "commodity": "Onion",
+            "market": "Dhule"
+        }
+        
+        # Try to get parameters from user profile first
+        if query.farmer_id:
+            try:
+                from profile_models import ProfileManager
+                profile_manager = ProfileManager()
+                profile = profile_manager.load_profile(query.farmer_id)
+                
+                if profile and profile.location:
+                    # Extract state and district from location
+                    location_parts = profile.location.split(',')
+                    if len(location_parts) >= 2:
+                        params["district"] = location_parts[0].strip()
+                        params["state"] = location_parts[1].strip()
+                        params["market"] = location_parts[0].strip()  # Use district as market
+                
+                # Use primary crops from profile if available
+                if profile.primary_crops:
+                    params["commodity"] = profile.primary_crops[0]  # Use first primary crop
+                    
+            except Exception as e:
+                print(f"Error loading farmer profile: {e}")
+        
+        # Extract parameters from query using LLM
+        extraction_prompt = f"""
+        Extract the following parameters from this price prediction query: {query.text}
+        
+        Return ONLY a JSON object with these fields:
+        - state: The state name (default: Maharashtra)
+        - district: The district name (default: Dhule)
+        - commodity: The commodity name (REQUIRED - extract from query)
+        - market: The market name (default: Dhule)
+        
+        IMPORTANT: You MUST extract the commodity name from the query. Common commodities: corn, maize, wheat, rice, onion, tomato, potato, sugar, cotton, soybean, pulses, milk, eggs.
+        
+        If any parameter is not mentioned, use "NONE" as the value.
+        Example: {{"state": "Maharashtra", "district": "Dhule", "commodity": "corn", "market": "Dhule"}}
+        """
+        
+        try:
+            response = self.get_llm_response(extraction_prompt)
+            # Simple JSON extraction - you might want to enhance this
+            import json
+            import re
+            
+            # Find JSON-like structure in response
+            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            if json_match:
+                try:
+                    extracted_params = json.loads(json_match.group())
+                    
+                    # Update params with extracted values, keeping profile defaults for "NONE" values
+                    for key, value in extracted_params.items():
+                        if value != "NONE":
+                            params[key] = value
+                except json.JSONDecodeError:
+                    print(f"Failed to parse JSON from LLM response: {json_match.group()}")
+                    # Continue with default params if JSON parsing fails
+            
+            # Process the forecast - only pass the parameters the method expects
+            forecast_params = {
+                'state': params.get('state'),
+                'district': params.get('district'),
+                'commodity': params.get('commodity'),
+                'market': params.get('market'),
+                'forecast_days': 7
+            }
+            
+            # Validate that commodity is not empty
+            if not forecast_params['commodity'] or forecast_params['commodity'] == 'NONE':
+                return AgentResult(
+                    agent_name=self.name,
+                    success=False,
+                    response="❌ Could not identify the commodity from your query. Please specify a commodity like 'corn', 'wheat', 'onion', etc.",
+                    confidence=0.0,
+                    sources=[]
+                )
+            
+            try:
+                forecast, chart_paths = self.process_data_and_forecast(**forecast_params)
+            except ValueError as e:
+                if "too many values to unpack" in str(e):
+                    # Handle the case where the method returns more than 2 values
+                    result = self.process_data_and_forecast(**forecast_params)
+                    if isinstance(result, tuple) and len(result) >= 2:
+                        forecast, chart_paths = result[0], result[1]
+                    else:
+                        return AgentResult(
+                            agent_name=self.name,
+                            success=False,
+                            response=f"❌ Error processing forecast: {str(e)}",
+                            confidence=0.0,
+                            sources=[]
+                        )
+                else:
+                    raise
+            
+            if isinstance(forecast, str):  # Error message
+                return AgentResult(
+                    agent_name=self.name,
+                    success=False,
+                    response=forecast,
+                    confidence=0.0,
+                    sources=[]
+                )
+            
+            # Format the response
+            last_7_days = forecast[['ds', 'yhat']].tail(7)
+            # Use the mapped commodity name in the response
+            display_commodity = mapped_commodity if 'mapped_commodity' in locals() else params['commodity']
+            forecast_text = f"📊 **Price Forecast for {display_commodity} in {params['market']}, {params['district']}, {params['state']}**\n\n"
+            forecast_text += "**Next 7 Days Forecast:**\n"
+            
+            for _, row in last_7_days.iterrows():
+                date = row['ds'].strftime('%Y-%m-%d')
+                price = row['yhat']
+                forecast_text += f"• **{date}**: ₹{price:.2f}\n"
+            
+            # Use the first chart path as the main chart_path
+            main_chart_path = chart_paths[0] if chart_paths else None
+            # forecast_text += f"\n📈 Charts saved at: {', '.join(chart_paths) if chart_paths else 'No charts generated'}"
+            
+            return AgentResult(
+                agent_name=self.name,
+                success=True,
+                response=forecast_text,
+                confidence=0.8,
+                chart_path=main_chart_path,
+                sources=[f"Data.gov.in API - {params['commodity']} prices"]
+            )
+            
+        except Exception as e:
+            return AgentResult(
+                agent_name=self.name,
+                success=False,
+                response=f"Error processing price prediction: {str(e)}",
+                confidence=0.0,
+                sources=[]
             )

@@ -164,9 +164,24 @@ class ProfileManager:
         if not profile:
             return None
         
-        # Update fields
+        # Update fields with proper type conversion
         for key, value in updates.items():
             if hasattr(profile, key):
+                # Convert string values to appropriate types
+                if key in ['experience_years'] and isinstance(value, str):
+                    try:
+                        value = int(value)
+                    except (ValueError, TypeError):
+                        continue  # Skip invalid values
+                elif key in ['farm_size_acres', 'latitude', 'longitude'] and isinstance(value, str):
+                    try:
+                        value = float(value)
+                    except (ValueError, TypeError):
+                        continue  # Skip invalid values
+                elif key in ['primary_crops', 'secondary_crops', 'livestock', 'equipment', 'primary_goals', 'current_challenges', 'interests'] and isinstance(value, str):
+                    # Convert comma-separated string to list
+                    value = [item.strip() for item in value.split(',') if item.strip()]
+                
                 setattr(profile, key, value)
         
         if self.save_profile(profile):

@@ -8,7 +8,8 @@ from langchain_groq import ChatGroq
 from utils import AgentResult, Query, GROQ_API_KEY, get_llm_response, is_farming_query
 from agents import (
     BaseAgent, RishikhetAgent1, RishikhetAgent2, RishikhetAgent3, RishikhetAgent4,
-    WebBasedAgent, FarmingAgent, RainForecastAgent, ImageAgent, YouTubeAgent, VisionAnalysisAgent
+    WebBasedAgent, FarmingAgent, RainForecastAgent, ImageAgent, YouTubeAgent, VisionAnalysisAgent,
+    PricePredictionAgent
 )
 
 # Import LangGraph orchestrator
@@ -73,6 +74,7 @@ class LLMRouter:
             "rishikhet_agent_3": "Handles livestock, animal husbandry, dairy farming, and animal health issues",
             "rishikhet_agent_4": "Covers agricultural machinery, equipment, tools, and farming technology",
             "rain_forecast_agent": "Provides weather forecasts, rainfall predictions, and climate information for specific cities",
+            "price_prediction_agent": "Provides agricultural commodity price forecasts, market trends, and price predictions for crops and livestock",
             "farming_agent": "General farming knowledge, basic agricultural advice, and farming techniques",
             "web_based_agent": "Searches current web information for farming, agriculture, and related topics",
             "image_agent": "Finds and displays images related to farming, agriculture, equipment, or any visual content",
@@ -93,14 +95,18 @@ class LLMRouter:
         1. Select ONLY agents that are directly relevant to answering the query
         2. For image/photo requests, primarily select image_agent
         3. For weather/rainfall queries, select rain_forecast_agent
-        4. For specific farming topics, select the most relevant specialized agents
-        5. Don't select all agents - be selective and efficient
-        6. Return agent names separated by commas
-        7. If unsure, include farming_agent as a fallback
+        4. For price/market/forecast queries, select price_prediction_agent
+        5. For specific farming topics, select the most relevant specialized agents
+        6. Don't select all agents - be selective and efficient
+        7. Return agent names separated by commas
+        8. If unsure, include farming_agent as a fallback
         
         Examples:
         - "show me images of tractors" → image_agent
         - "rainfall forecast for Delhi" → rain_forecast_agent
+        - "price of corn in next 7 days" → price_prediction_agent
+        - "wheat price forecast" → price_prediction_agent
+        - "market price trends for onion" → price_prediction_agent
         - "tomato disease treatment" → rishikhet_agent_1, farming_agent
         - "soil pH management" → rishikhet_agent_2, farming_agent
         - "dairy cow nutrition" → rishikhet_agent_3, farming_agent
@@ -131,18 +137,43 @@ class LLMRouter:
         """Route the query to the best agent using AI analysis"""
         print(f"[DEBUG] LLMRouter analyzing query: '{query_text}'")
         
-        # First, check if this is a weather/rainfall query with a city
-        city_name = self.extract_city_from_query(query_text)
-        if city_name:
-            print(f"[DEBUG] City detected: {city_name}, routing to rain_forecast_agent")
-            return "rain_forecast_agent"
-        
-        # Check for weather keywords as fallback
-        weather_keywords = ["rain", "rainfall", "weather", "forecast", "precipitation", "storm", "monsoon"]
         query_lower = query_text.lower()
+        
+        # First, check for price-related keywords (higher priority)
+        # But exclude "prediction" when it's used with weather terms
+        price_keywords = ["price", "prices", "market", "commodity", "trend"]
+        weather_terms = ["rain", "rainfall", "weather", "storm", "monsoon"]
+        
+        # Check if this is a price query (but not weather prediction)
+        has_price_keywords = any(keyword in query_lower for keyword in price_keywords)
+        has_weather_terms = any(term in query_lower for term in weather_terms)
+        
+        if has_price_keywords and not has_weather_terms:
+            print("[DEBUG] Price keywords detected, routing to price_prediction_agent")
+            return "price_prediction_agent"
+        
+        # Then check if this is a weather/rainfall query with a city
+        weather_keywords = ["rain", "rainfall", "weather", "precipitation", "storm", "monsoon"]
+        
+        # Only extract city for weather-related queries (excluding "forecast" when used with price terms)
         if any(keyword in query_lower for keyword in weather_keywords):
-            print("[DEBUG] Weather keywords detected, routing to rain_forecast_agent")
-            return "rain_forecast_agent"
+            city_name = self.extract_city_from_query(query_text)
+            if city_name:
+                print(f"[DEBUG] City detected: {city_name}, routing to rain_forecast_agent")
+                return "rain_forecast_agent"
+            else:
+                print("[DEBUG] Weather keywords detected, routing to rain_forecast_agent")
+                return "rain_forecast_agent"
+        
+        # Check for "forecast" keyword specifically (but not with price terms)
+        if "forecast" in query_lower and not any(keyword in query_lower for keyword in price_keywords):
+            city_name = self.extract_city_from_query(query_text)
+            if city_name:
+                print(f"[DEBUG] Forecast with city detected: {city_name}, routing to rain_forecast_agent")
+                return "rain_forecast_agent"
+            else:
+                print("[DEBUG] Forecast keyword detected, routing to rain_forecast_agent")
+                return "rain_forecast_agent"
         
         # For other queries, use AI to determine the best agent
         agent_descriptions = []
@@ -201,12 +232,14 @@ class SimpleAgriculturalAI:
         self.image_agent = ImageAgent()
         self.youtube_agent = YouTubeAgent()
         self.vision_agent = VisionAnalysisAgent()
+        self.price_prediction_agent = PricePredictionAgent()
         self.all_agents = self.rishikhet_agents + [
             self.farming_agent,
             self.web_based_agent,
             self.image_agent,
             self.youtube_agent,
             self.vision_agent,
+            self.price_prediction_agent,
         ]
         
         # Initialize the new LLM-based router
@@ -219,9 +252,9 @@ class SimpleAgriculturalAI:
         except Exception as e:
             return f"Error: {str(e)}"
 
-    def ask(self, question: str) -> Dict[str, Any]:
-        print(f"[DEBUG] SimpleAgriculturalAI.ask() called with: '{question}'")
-        query = Query(text=question)
+    def ask(self, question: str, farmer_id: Optional[str] = None) -> Dict[str, Any]:
+        print(f"[DEBUG] SimpleAgriculturalAI.ask() called with: '{question}' and farmer_id: {farmer_id}")
+        query = Query(text=question, farmer_id=farmer_id)
         chain_of_thought = f"Starting single-agent routing for: '{question}'\n"
 
         print("[DEBUG] Using AI-driven single-agent routing...")
