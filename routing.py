@@ -231,10 +231,12 @@ class SimpleAgriculturalAI:
         
         return self.process_with_selected_agents(query, [best_agent], chain_of_thought)
 
-    def analyze_image(self, image_bytes: bytes, mode: str = "plant") -> Dict[str, Any]:
+    def analyze_image(self, image_bytes: bytes, mode: str = "plant", demo_mode: bool = False) -> Dict[str, Any]:
         """Route image analysis through the dedicated vision agent so the main system remains the entrypoint."""
-        print(f"[DEBUG] SimpleAgriculturalAI.analyze_image() called, mode={mode}")
+        print(f"[DEBUG] SimpleAgriculturalAI.analyze_image() called, mode={mode}, demo_mode={demo_mode}")
         try:
+            # Set demo mode on the vision agent
+            self.vision_agent.use_demo_mode = demo_mode
             result = self.vision_agent.analyze_image(image_bytes, mode=mode)
             return {
                 "answer": result.response,

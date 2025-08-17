@@ -326,23 +326,25 @@
                 <option value="soil">Soil</option>
             </select>
             <button id="vision-analyze">Analyze Image</button>
-            <span id="vision-status" style="font-size:12px; color:#666;"></span>
-        </div>
-        <div style="margin-top:10px; display:flex; align-items:center; gap:16px;">
-            <img id="vision-preview" alt="Preview" style="max-height:140px; display:none; border-radius:6px; border:1px solid #e5e7eb;" />
-            <div id="vision-help" style="font-size:12px; color:#4b5563;">Upload a clear photo of a plant/leaf (spots, discoloration) or soil sample (close-up).</div>
+            <div style="margin-top:8px; display:flex; align-items:center; gap:12px;">
+                <span id="vision-status" style="font-size:12px; color:#666;"></span>
+            </div>
+            <div style="margin-top:10px; display:flex; align-items:center; gap:16px;">
+                <img id="vision-preview" alt="Preview" style="max-height:140px; display:none; border-radius:6px; border:1px solid #e5e7eb;" />
+                <div id="vision-help" style="font-size:12px; color:#4b5563;">Upload a clear photo of a plant/leaf (spots, discoloration) or soil sample (close-up).</div>
+            </div>
         </div>
     </div>
 
     <div id="results-container" class="tab-container">
         <div class="tab-buttons">
-            <button class="tab-button active" onclick="showTab('answer')">
+            <button class="tab-button active" onclick="showTab('answer', event)">
                 📝 Answer
             </button>
-            <button class="tab-button" onclick="showTab('sources')">
+            <button class="tab-button" onclick="showTab('sources', event)">
                 📚 Sources
             </button>
-            <button class="tab-button" onclick="showTab('cot')">
+            <button class="tab-button" onclick="showTab('cot', event)">
                 🧠 Chain of Thought
             </button>
         </div>
@@ -362,7 +364,7 @@
 
     <script>
         // Tab switching functionality
-        function showTab(tabName) {
+        function showTab(tabName, event = null) {
             // Hide all tab contents
             const tabContents = document.querySelectorAll('.tab-content');
             tabContents.forEach(content => content.classList.remove('active'));
@@ -374,8 +376,18 @@
             // Show selected tab content
             document.getElementById(tabName + '-tab').classList.add('active');
             
-            // Add active class to clicked button
-            event.target.classList.add('active');
+            // Add active class to clicked button (only if event is provided)
+            if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // Find the button for this tab and make it active
+                const targetButton = Array.from(tabButtons).find(button => 
+                    button.onclick.toString().includes(`'${tabName}'`)
+                );
+                if (targetButton) {
+                    targetButton.classList.add('active');
+                }
+            }
         }
 
         // --- Try-out chip helper ---
@@ -546,15 +558,20 @@
             const f = vision.fileInput.files && vision.fileInput.files[0];
             if (!f) { alert('Please choose an image first.'); return; }
             const mode = vision.modeSel.value || 'plant';
-            vision.status.textContent = 'Analyzing image...';
+            vision.status.textContent = '🔍 Analyzing image with Gemini Vision...';
             tcSetThinking(true);
             try {
                 const fd = new FormData();
                 fd.append('file', f);
                 fd.append('mode', mode);
+                fd.append('demo_mode', 'false');
                 const resp = await fetch('/analyze-image', { method: 'POST', body: fd });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 const data = await resp.json();
+                
+                console.log('Vision analysis response:', data);
+                console.log('Response data.answer:', data.answer);
+                console.log('Response data.success:', data.success);
 
                 // Show results in Answer tab as well
                 const answerContent = document.getElementById('answer-content');
@@ -562,6 +579,11 @@
                 const statusIndicator = data.success ?
                     '<span class="success-indicator success">✓ Success</span>' :
                     '<span class="success-indicator failure">✗ Failed</span>';
+                
+                // Ensure the results container is visible
+                resultsContainer.style.display = 'block';
+                
+                // Populate the answer content
                 answerContent.innerHTML = `
                     <div style="margin-bottom: 15px;">
                         <strong>Agent Used:</strong> ${data.agent_used || 'vision_analysis_agent'}
@@ -569,17 +591,20 @@
                     </div>
                     <div class="answer-content">${(data.answer || '').replace(/</g,'&lt;')}</div>
                 `;
-                // Ensure the results container is visible
-                if (resultsContainer && resultsContainer.style.display === 'none') {
-                    resultsContainer.style.display = 'block';
-                }
-                showTabByName('answer');
+                
+                // Show the answer tab and make it active
+                showTab('answer');
+                
                 // Auto-scroll after we render the answer
                 try {
                     resultsContainer.scrollIntoView({behavior: 'smooth', block: 'start'});
                 } catch (e) { /* noop */ }
+                
                 // Status
-                vision.status.textContent = data.success ? 'Done.' : 'Failed.';
+                vision.status.textContent = data.success ? '✅ Analysis complete!' : '❌ Analysis failed.';
+                
+                // Stop thinking state
+                tcSetThinking(false);
             } catch (err) {
                 console.error('Vision analyze error:', err);
                 vision.status.textContent = 'Error analyzing image';
@@ -595,7 +620,7 @@
                 if (resultsContainerErr && resultsContainerErr.style.display === 'none') {
                     resultsContainerErr.style.display = 'block';
                 }
-                showTabByName('answer');
+                showTab('answer');
             }
         });
 

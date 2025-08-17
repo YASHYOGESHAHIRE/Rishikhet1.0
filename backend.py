@@ -99,14 +99,13 @@ async def ask_question(request: QuestionRequest):
 
 # Image analysis endpoint (plant/soil)
 @app.post("/analyze-image")
-async def analyze_image(file: UploadFile = File(...), mode: str = Form("plant")):
+async def analyze_image(file: UploadFile = File(...), mode: str = Form("plant"), demo_mode: str = Form("false")):
     try:
         if not file or not file.filename:
             raise HTTPException(status_code=400, detail="No image file provided")
 
         contents = await file.read()
-        # Route through main orchestrator so the vision agent remains part of the system
-        result = ai_assistant.analyze_image(contents, mode=mode.lower().strip() if mode else "plant")
+        result = ai_assistant.analyze_image(contents, mode=mode.lower().strip() if mode else "plant", demo_mode=demo_mode.lower() == "true")
 
         response_data = {
             "answer": result.get("answer"),
@@ -225,3 +224,19 @@ async def serve_questions_page():
             return f.read()
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Questions page not found")
+
+if __name__ == "__main__":
+    import uvicorn
+    print("🚀 Starting Agricultural AI Backend Server...")
+    print("🌐 Server will be available at: http://localhost:8000")
+    print("📱 Open your browser and navigate to: http://localhost:8000")
+    print("🛑 Press Ctrl+C to stop the server")
+    print("="*50)
+    
+    uvicorn.run(
+        "backend:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )

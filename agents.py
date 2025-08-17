@@ -832,103 +832,167 @@ class ImageAgent(BaseAgent):
 # ============================================================================
 
 class VisionAnalysisAgent(BaseAgent):
-    """Analyze plant disease/health and soil characteristics from an image using Gemini Vision.
-
-    Requires environment variable GEMINI_API_KEY to be set (in `utils.py` you can store and load it).
-    If not set, the agent will return an informative error.
-    """
-
-    def __init__(self):
+    def __init__(self, api_key: str = None):
         topics = [
             "plant", "leaf", "disease", "blight", "rust", "spots", "deficiency",
             "soil", "nutrient", "texture", "pH", "fertility", "organic matter",
             "plant analysis", "soil analysis", "vision", "image"
         ]
-        super().__init__("vision_analysis_agent", topics=topics, description=(
+        super().__init__("Vision Analysis Agent", topics=topics, description=(
             "Analyzes uploaded plant or soil images to detect plant diseases, deficiencies, and provide soil observations using a vision LLM."
         ))
-        self.gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
-        self.gemini_model = "gemini-1.5-flash"  # fast and cost-effective
-        self.gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent"
+        self.gemini_api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.gemini_model = "gemini-1.5-flash"
+        self.gemini_url = f"https://generativelanguage.googleapis.com/v1/models/{self.gemini_model}:generateContent"
+        self.use_demo_mode = False
 
-    def _build_prompt(self, mode: str) -> str:
+    def _build_prompt(self, mode: str = "plant") -> str:
         if mode == "soil":
-            return (
-                "You are an expert agronomist. Analyze the soil image provided and describe: "
-                "1) Visible texture and structure (sand/silt/clay indications), "
-                "2) Moisture and organic matter indications, 3) Possible nutrient or pH hints, "
-                "4) Practical recommendations: soil tests to run, amendments/fertilizers, irrigation, and field actions. "
-                "Be specific, concise, and actionable. If uncertain, state assumptions."
-            )
-        # default to plant
-        return (
-            "You are a plant pathologist. Analyze the plant/leaf image provided and describe: "
-            "1) Likely disease/deficiency/pest (with confidence), 2) Identifying symptoms, "
-            "3) Immediate actions and safe treatments (organic + chemical options with dosage), "
-            "4) Prevention and care tips. Be specific and practical for farmers."
-        )
+            return """Analyze this soil image and provide:
+1. Soil type and texture assessment
+2. Moisture level indicators
+3. Nutrient deficiency signs
+4. pH level estimation
+5. Recommendations for soil improvement
+6. Suitable crops for this soil type
+7. Fertilizer and amendment suggestions
+
+Provide practical, actionable advice for farmers."""
+        else:  # plant mode
+            return """Analyze this plant image and provide:
+1. Plant health assessment
+2. Disease identification (if any)
+3. Pest infestation signs
+4. Nutrient deficiency symptoms
+5. Growth stage analysis
+6. Treatment recommendations
+7. Prevention strategies
+8. Expected recovery timeline
+
+Provide practical, actionable advice for farmers."""
 
     def analyze_image(self, image_bytes: bytes, mode: str = "plant") -> AgentResult:
-        if not self.gemini_api_key:
-            return AgentResult(
-                agent_name=self.name,
-                success=False,
-                response=(
-                    "Gemini API key not configured. Set GEMINI_API_KEY in environment to enable vision analysis."
-                ),
-                confidence=0.0,
-                sources=[]
-            )
+        if self.use_demo_mode:
+            # 🎭 Demo Mode: Fake prediction injected into Gemini
+            import random
+            fake_diseases = [
+                {"name": "Leaf Blight", "confidence": 0.92, "advice": "Remove affected leaves and spray neem oil."},
+                {"name": "Powdery Mildew", "confidence": 0.87, "advice": "Ensure airflow, use sulfur fungicide."},
+                {"name": "Healthy Leaf", "confidence": 0.95, "advice": "Keep watering steady and add nitrogen."}
+            ]
+            prediction = random.choice(fake_diseases)
 
-        try:
-            b64 = base64.b64encode(image_bytes).decode("utf-8")
+            prompt = f"""
+            Assume the AI model classified the uploaded image as **{prediction['name']}** 
+            with **{prediction['confidence']*100:.2f}% confidence**.
+            Based on this, explain to a farmer:
+            - What this means (disease or health),
+            - Symptoms to notice,
+            - Prevention & treatment (organic + chemical),
+            - Fertilizer/nutrient advice,
+            - A short step-by-step action plan.
+            """
+        else:
+            # 🔬 Real Gemini Vision analysis
+            if not self.gemini_api_key:
+                return AgentResult(
+                    agent_name=self.name,
+                    success=False,
+                    response="Gemini API key not configured. Set GEMINI_API_KEY.",
+                    confidence=0.0,
+                    sources=[]
+                )
             prompt = self._build_prompt(mode)
 
-            payload = {
-                "contents": [
-                    {
-                        "parts": [
-                            {"text": prompt},
-                            {
-                                "inline_data": {
-                                    "mime_type": "image/jpeg",
-                                    "data": b64
+        try:
+            if self.use_demo_mode:
+                # In demo mode, just return the fake prediction with advice
+                answer = f"""
+                🎭 DEMO MODE - AI Model Prediction:
+                
+                **Disease/Status:** {prediction['name']}
+                **Confidence:** {prediction['confidence']*100:.1f}%
+                **Quick Advice:** {prediction['advice']}
+                
+                **Detailed Analysis:**
+                {prompt}
+                
+                Note: This is a demo response. For real analysis, set use_demo_mode = False and configure GEMINI_API_KEY.
+                """
+            else:
+                # Real Gemini Vision analysis
+                b64 = base64.b64encode(image_bytes).decode("utf-8")
+                
+                # Detect image format from the first few bytes
+                def detect_image_format(image_bytes):
+                    if image_bytes.startswith(b'\xff\xd8\xff'):
+                        return "image/jpeg"
+                    elif image_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+                        return "image/png"
+                    elif image_bytes.startswith(b'RIFF') and image_bytes[8:12] == b'WEBP':
+                        return "image/webp"
+                    elif image_bytes.startswith(b'GIF87a') or image_bytes.startswith(b'GIF89a'):
+                        return "image/gif"
+                    else:
+                        return "image/jpeg"  # fallback
+                
+                mime_type = detect_image_format(image_bytes)
+
+                payload = {
+                    "contents": [
+                        {
+                            "parts": [
+                                {"text": prompt},
+                                {
+                                    "inline_data": {
+                                        "mime_type": mime_type,
+                                        "data": b64
+                                    }
                                 }
-                            }
-                        ]
-                    }
-                ],
-                "generationConfig": {
-                    "temperature": 0.2,
-                    "maxOutputTokens": 512
+                            ]
+                        }
+                    ],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 512}
                 }
-            }
 
-            params = {"key": self.gemini_api_key}
-            resp = requests.post(self.gemini_url, params=params, json=payload, timeout=30)
-            resp.raise_for_status()
-            data = resp.json()
+                params = {"key": self.gemini_api_key}
+                
+                # Debug: Print request details (remove in production)
+                print(f"[DEBUG] Sending request to: {self.gemini_url}")
+                print(f"[DEBUG] MIME type: {mime_type}")
+                print(f"[DEBUG] Image size: {len(image_bytes)} bytes")
+                print(f"[DEBUG] Base64 length: {len(b64)} chars")
+                
+                resp = requests.post(self.gemini_url, params=params, json=payload, timeout=30)
+                
+                if not resp.ok:
+                    print(f"[DEBUG] API Response Status: {resp.status_code}")
+                    print(f"[DEBUG] API Response Headers: {dict(resp.headers)}")
+                    print(f"[DEBUG] API Response Body: {resp.text[:500]}")
+                    resp.raise_for_status()
+                
+                data = resp.json()
 
-            # Extract text
-            answer = ""
-            try:
-                candidates = data.get("candidates", [])
-                if candidates and "content" in candidates[0]:
-                    parts = candidates[0]["content"].get("parts", [])
-                    answer = "".join(p.get("text", "") for p in parts)
-            except Exception:
-                answer = str(data)[:1000]
+                answer = ""
+                try:
+                    candidates = data.get("candidates", [])
+                    if candidates and "content" in candidates[0]:
+                        parts = candidates[0]["content"].get("parts", [])
+                        answer = "".join(p.get("text", "") for p in parts)
+                except Exception:
+                    answer = str(data)[:1000]
 
-            if not answer:
-                answer = "No analysis text returned by the vision model."
+                if not answer:
+                    answer = "No analysis text returned by the vision model."
 
             return AgentResult(
                 agent_name=self.name,
                 success=True,
                 response=answer,
-                confidence=0.85,
+                confidence=prediction["confidence"] if self.use_demo_mode else 0.85,
                 sources=[f"{self.gemini_model} (Gemini Vision)"]
             )
+
         except Exception as e:
             return AgentResult(
                 agent_name=self.name,
