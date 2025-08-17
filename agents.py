@@ -18,7 +18,7 @@ from prophet import Prophet
 import holidays
 
 from utils import (
-    AgentResult, Query, cache, GROQ_API_KEY, PIXABAY_API_KEY, YOUTUBE_API_KEY,
+    AgentResult, Query, cache, GROQ_API_KEY, PIXABAY_API_KEY, YOUTUBE_API_KEY, OGD_API_KEY,
     GROUP_1_TOPICS, GROUP_2_TOPICS, GROUP_3_TOPICS, GROUP_4_TOPICS,
     RainfallMapVisualizer, get_llm_response
 )
@@ -1106,7 +1106,7 @@ class PricePredictionAgent(BaseAgent):
         super().__init__("price_prediction_agent", topics=topics, description=(
             "Predicts agricultural commodity prices using historical data and Prophet forecasting model."
         ))
-        self.API_KEY = "579b464db66ec23bdd0000017b56220866944043721237ffc3490f00"
+        self.API_KEY = OGD_API_KEY
         self.API1_URL = "https://api.data.gov.in/resource/35985678-0d79-46b4-9ed6-6f13308a1d24"
         self.API2_URL = "https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070"
         self.VISUALIZER_PATH = "/tmp/price_prediction_charts"
@@ -1294,7 +1294,7 @@ class PricePredictionAgent(BaseAgent):
         plt.savefig(plot_path_components)
         plt.close(fig2)
 
-        return forecast, [plot_path_forecast, plot_path_components]
+        return forecast, [plot_path_forecast, plot_path_components], mapped_commodity
 
     def process(self, query: Query) -> AgentResult:
         """Process price prediction query and return forecast results."""
@@ -1385,13 +1385,13 @@ class PricePredictionAgent(BaseAgent):
                 )
             
             try:
-                forecast, chart_paths = self.process_data_and_forecast(**forecast_params)
+                forecast, chart_paths, mapped_commodity = self.process_data_and_forecast(**forecast_params)
             except ValueError as e:
                 if "too many values to unpack" in str(e):
-                    # Handle the case where the method returns more than 2 values
+                    # Handle the case where the method returns more than 3 values
                     result = self.process_data_and_forecast(**forecast_params)
-                    if isinstance(result, tuple) and len(result) >= 2:
-                        forecast, chart_paths = result[0], result[1]
+                    if isinstance(result, tuple) and len(result) >= 3:
+                        forecast, chart_paths, mapped_commodity = result[0], result[1], result[2]
                     else:
                         return AgentResult(
                             agent_name=self.name,
@@ -1415,7 +1415,7 @@ class PricePredictionAgent(BaseAgent):
             # Format the response
             last_7_days = forecast[['ds', 'yhat']].tail(7)
             # Use the mapped commodity name in the response
-            display_commodity = mapped_commodity if 'mapped_commodity' in locals() else params['commodity']
+            display_commodity = mapped_commodity if mapped_commodity else params['commodity']
             forecast_text = f"📊 **Price Forecast for {display_commodity} in {params['market']}, {params['district']}, {params['state']}**\n\n"
             forecast_text += "**Next 7 Days Forecast:**\n"
             
