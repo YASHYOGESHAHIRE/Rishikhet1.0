@@ -95,3 +95,4 @@ def test_comprehensive_routing():
 if __name__ == "__main__":
     test_comprehensive_routing()
     print("\n✅ Comprehensive routing test completed!")
+

@@ -124,3 +124,4 @@ def test_profile_update():
 if __name__ == "__main__":
     test_profile_update()
     print("\n✅ All profile update tests completed!")
+
